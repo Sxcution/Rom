@@ -30,6 +30,23 @@ Dự án tích hợp màn hình chính riêng (**ParallelHomeActivity**) vào **
    * Danh sách hiển thị đầy đủ app User 0 và các app Space 1/2/3 với badge số hiệu rõ ràng.
    * Logcat sạch lỗi, không phát sinh bất kỳ crash hay `SecurityException` nào.
 
+### 4. Tối ưu hóa sâu Launcher & Chính sách Clone (20/06/2026)
+* **[ClonePolicy.java](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/_parallel_a12_port_work/ParallelSpaceSettingsApp/src/ink/kscope/parallelspace/ClonePolicy.java)**: Định nghĩa chính sách lọc và tự động clone cho Parallel Space.
+* **[ParallelSpaceActivity.java](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/_parallel_a12_port_work/ParallelSpaceSettingsApp/src/ink/kscope/parallelspace/ParallelSpaceActivity.java)**:
+  * Tích hợp bộ lọc và sắp xếp ứng dụng nhân bản (ưu tiên WeChat, Chrome, Photos).
+  * Chỉ tự động nhân bản Chrome và Photos khi tạo Space mới.
+  * Tích hợp hàm quét dọn (`cleanupCloneUser`) tự động gỡ bỏ các launcher apps rác thừa kế của hệ thống sau khi tạo Space.
+* **[ParallelHomeActivity.java](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/_parallel_a12_port_work/ParallelSpaceSettingsApp/src/ink/kscope/parallelspace/ParallelHomeActivity.java)**:
+  * Thiết kế lại giao diện phân chia tab "Home Screen" (chứa app ghim) và "App Drawer" (danh sách tất cả các app được phép).
+  * Hỗ trợ lưu trữ các app ghim qua `SharedPreferences` và tương tác nhấn giữ (Long Click) để ghim/gỡ ghim trực quan.
+* **Xác thực thực tế**:
+  * Đa nhiệm (Recents) hoạt động trơn tru do Pixel Launcher được giữ lại làm Quickstep backend.
+  * Giao diện Parallel Launcher hiển thị đúng thiết kế và tương tác mượt mà:
+  
+  ![Giao diện Parallel Launcher](file:///C:/Users/Mon/.gemini/antigravity/brain/d28cf070-ed0d-47cf-86b7-45956dac5c68/parallel_settings_screen_new.png)
+
 ## Tài liệu đi kèm đã tạo
 * **[project_structure.md](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/project_structure.md)**: Sơ đồ cấu trúc các tệp tin trong dự án.
 * **[naming_registry.json](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/naming_registry.json)**: Registry định nghĩa các hằng số, lớp và Binder transaction mã hóa đồng bộ.
+* **[PATCH_INDEX.md](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/PATCH_INDEX.md)**: Chỉ mục lưu trữ tên file, checksum SHA256, path local, nguồn build và thiết bị kiểm thử của các file binary.
+

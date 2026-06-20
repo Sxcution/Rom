@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.LauncherActivityInfo;
 import android.content.pm.LauncherApps;
 import android.content.pm.PackageManager;
@@ -19,7 +20,9 @@ import android.os.UserHandle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.BaseAdapter;
+import android.widget.FrameLayout;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -41,9 +44,19 @@ public class ParallelHomeActivity extends Activity {
 
     private LauncherApps launcherApps;
     private IBinder parallelService;
-    private GridView gridView;
-    private final List<AppItem> appList = new ArrayList<>();
-    private AppAdapter adapter;
+
+    private TextView titleView;
+    private GridView homeGridView;
+    private GridView drawerGridView;
+    private TextView btnHome;
+    private TextView btnApps;
+    private boolean isHomeTab = true;
+
+    private final List<AppItem> masterAppList = new ArrayList<>();
+    private final List<AppItem> pinnedAppList = new ArrayList<>();
+
+    private AppAdapter homeAdapter;
+    private AppAdapter drawerAdapter;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -52,6 +65,41 @@ public class ParallelHomeActivity extends Activity {
         parallelService = getService(SERVICE_NAME);
         
         setContentView(buildLayout());
+
+        homeGridView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                AppItem item = pinnedAppList.get(position);
+                String key = item.componentName.getPackageName() + "/" + item.spaceNumber;
+                List<String> pins = getPinnedKeys();
+                if (pins.contains(key)) {
+                    pins.remove(key);
+                    savePinnedKeys(pins);
+                    loadApps();
+                    Toast.makeText(ParallelHomeActivity.this, "Unpinned " + item.label + " from Home", Toast.LENGTH_SHORT).show();
+                }
+                return true;
+            }
+        });
+
+        drawerGridView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                AppItem item = masterAppList.get(position);
+                String key = item.componentName.getPackageName() + "/" + item.spaceNumber;
+                List<String> pins = getPinnedKeys();
+                if (pins.contains(key)) {
+                    Toast.makeText(ParallelHomeActivity.this, item.label + " is already pinned!", Toast.LENGTH_SHORT).show();
+                } else {
+                    pins.add(key);
+                    savePinnedKeys(pins);
+                    loadApps();
+                    Toast.makeText(ParallelHomeActivity.this, "Pinned " + item.label + " to Home", Toast.LENGTH_SHORT).show();
+                }
+                return true;
+            }
+        });
+
         loadApps();
     }
 
@@ -70,29 +118,105 @@ public class ParallelHomeActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(18, 18, 18));
-        root.setPadding(dp(16), dp(24), dp(16), dp(16));
+        root.setPadding(dp(16), dp(16), dp(16), dp(16));
 
-        TextView title = new TextView(this);
-        title.setText("Parallel Space Launcher");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(20);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setGravity(Gravity.CENTER_HORIZONTAL);
-        title.setPadding(0, 0, 0, dp(16));
-        root.addView(title, new LinearLayout.LayoutParams(-1, -2));
+        titleView = new TextView(this);
+        titleView.setText("Home Screen");
+        titleView.setTextColor(Color.WHITE);
+        titleView.setTextSize(22);
+        titleView.setTypeface(Typeface.DEFAULT_BOLD);
+        titleView.setGravity(Gravity.CENTER_HORIZONTAL);
+        titleView.setPadding(0, dp(8), 0, dp(16));
+        root.addView(titleView, new LinearLayout.LayoutParams(-1, -2));
 
-        gridView = new GridView(this);
-        gridView.setNumColumns(4);
-        gridView.setVerticalSpacing(dp(20));
-        gridView.setHorizontalSpacing(dp(10));
-        gridView.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
-        
-        root.addView(gridView, new LinearLayout.LayoutParams(-1, -1));
+        FrameLayout frameLayout = new FrameLayout(this);
+        LinearLayout.LayoutParams frameLp = new LinearLayout.LayoutParams(-1, 0, 1);
+        root.addView(frameLayout, frameLp);
+
+        homeGridView = new GridView(this);
+        homeGridView.setNumColumns(4);
+        homeGridView.setVerticalSpacing(dp(20));
+        homeGridView.setHorizontalSpacing(dp(10));
+        homeGridView.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
+        frameLayout.addView(homeGridView, new FrameLayout.LayoutParams(-1, -1));
+
+        drawerGridView = new GridView(this);
+        drawerGridView.setNumColumns(4);
+        drawerGridView.setVerticalSpacing(dp(20));
+        drawerGridView.setHorizontalSpacing(dp(10));
+        drawerGridView.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
+        drawerGridView.setVisibility(View.GONE);
+        frameLayout.addView(drawerGridView, new FrameLayout.LayoutParams(-1, -1));
+
+        // Bottom Navigation Bar
+        LinearLayout bottomNav = new LinearLayout(this);
+        bottomNav.setOrientation(LinearLayout.HORIZONTAL);
+        bottomNav.setGravity(Gravity.CENTER_VERTICAL);
+        bottomNav.setPadding(0, dp(8), 0, dp(8));
+        bottomNav.setBackgroundColor(Color.rgb(28, 28, 28));
+        LinearLayout.LayoutParams navLp = new LinearLayout.LayoutParams(-1, dp(56));
+        navLp.topMargin = dp(8);
+        root.addView(bottomNav, navLp);
+
+        btnHome = makeNavButton("Home", true);
+        btnApps = makeNavButton("Apps", false);
+        TextView btnSettings = makeNavButton("Settings", false);
+
+        btnHome.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showTab(true);
+            }
+        });
+
+        btnApps.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showTab(false);
+            }
+        });
+
+        btnSettings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    Intent intent = new Intent();
+                    intent.setClassName("ink.kscope.parallelspace", "ink.kscope.parallelspace.ParallelSpaceActivity");
+                    startActivity(intent);
+                } catch (Throwable t) {
+                    Toast.makeText(ParallelHomeActivity.this, "Failed to launch settings", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        bottomNav.addView(btnHome, new LinearLayout.LayoutParams(0, -1, 1));
+        bottomNav.addView(btnApps, new LinearLayout.LayoutParams(0, -1, 1));
+        bottomNav.addView(btnSettings, new LinearLayout.LayoutParams(0, -1, 1));
+
         return root;
     }
 
+    private TextView makeNavButton(String label, boolean active) {
+        TextView btn = new TextView(this);
+        btn.setText(label);
+        btn.setGravity(Gravity.CENTER);
+        btn.setTextSize(16);
+        btn.setTypeface(Typeface.DEFAULT_BOLD);
+        btn.setTextColor(active ? Color.rgb(235, 220, 119) : Color.rgb(160, 160, 160));
+        return btn;
+    }
+
+    private void showTab(boolean showHome) {
+        isHomeTab = showHome;
+        titleView.setText(showHome ? "Home Screen" : "App Drawer");
+        homeGridView.setVisibility(showHome ? View.VISIBLE : View.GONE);
+        drawerGridView.setVisibility(showHome ? View.GONE : View.VISIBLE);
+        btnHome.setTextColor(showHome ? Color.rgb(235, 220, 119) : Color.rgb(160, 160, 160));
+        btnApps.setTextColor(showHome ? Color.rgb(160, 160, 160) : Color.rgb(235, 220, 119));
+    }
+
     private void loadApps() {
-        appList.clear();
+        masterAppList.clear();
 
         // 1. Load User 0 (Owner) apps
         UserHandle ownerUser = Process.myUserHandle();
@@ -102,7 +226,10 @@ public class ParallelHomeActivity extends Activity {
             if (pkg.equals(getPackageName())) {
                 continue;
             }
-            appList.add(new AppItem(
+            if (ClonePolicy.isBlockedTrashApp(pkg)) {
+                continue;
+            }
+            masterAppList.add(new AppItem(
                 info.getLabel().toString(),
                 info.getComponentName(),
                 info.getIcon(0),
@@ -128,8 +255,11 @@ public class ParallelHomeActivity extends Activity {
                     if (pkg.equals(getPackageName())) {
                         continue;
                     }
+                    if (!ClonePolicy.isAllowedCloneApp(pkg)) {
+                        continue;
+                    }
                     Drawable badgedIcon = BadgeIconRenderer.renderBadgedIcon(this, info.getIcon(0), spaceNumber);
-                    appList.add(new AppItem(
+                    masterAppList.add(new AppItem(
                         info.getLabel().toString(),
                         info.getComponentName(),
                         badgedIcon,
@@ -143,8 +273,8 @@ public class ParallelHomeActivity extends Activity {
             }
         }
 
-        // Sort apps: User 0 first, then Clone users, alphabetically inside groups
-        Collections.sort(appList, new Comparator<AppItem>() {
+        // Sort masterAppList: User 0 first, then Clone users, alphabetically inside groups
+        Collections.sort(masterAppList, new Comparator<AppItem>() {
             @Override
             public int compare(AppItem a, AppItem b) {
                 if (a.isClone != b.isClone) {
@@ -154,12 +284,68 @@ public class ParallelHomeActivity extends Activity {
             }
         });
 
-        if (adapter == null) {
-            adapter = new AppAdapter();
-            gridView.setAdapter(adapter);
-        } else {
-            adapter.notifyDataSetChanged();
+        // 3. Load Pinned apps in Saved Order
+        pinnedAppList.clear();
+        List<String> pinKeys = getPinnedKeys();
+        for (String key : pinKeys) {
+            for (AppItem item : masterAppList) {
+                String itemKey = item.componentName.getPackageName() + "/" + item.spaceNumber;
+                if (itemKey.equals(key)) {
+                    pinnedAppList.add(item);
+                    break;
+                }
+            }
         }
+
+        if (homeAdapter == null) {
+            homeAdapter = new AppAdapter(pinnedAppList);
+            homeGridView.setAdapter(homeAdapter);
+        } else {
+            homeAdapter.notifyDataSetChanged();
+        }
+
+        if (drawerAdapter == null) {
+            drawerAdapter = new AppAdapter(masterAppList);
+            drawerGridView.setAdapter(drawerAdapter);
+        } else {
+            drawerAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private List<String> getPinnedKeys() {
+        SharedPreferences sp = getSharedPreferences("parallel_home_pins", Context.MODE_PRIVATE);
+        String raw = sp.getString("pins", null);
+        List<String> list = new ArrayList<>();
+        if (raw == null || raw.trim().isEmpty()) {
+            // Default pinned list: WeChat user 0/1/2/3, Chrome 1/2/3, Photos 1/2/3
+            String[] defaults = {
+                "com.tencent.mm/0", "com.tencent.mm/1", "com.tencent.mm/2", "com.tencent.mm/3",
+                "com.android.chrome/0", "com.android.chrome/1", "com.android.chrome/2", "com.android.chrome/3",
+                "com.google.android.apps.photos/0", "com.google.android.apps.photos/1", "com.google.android.apps.photos/2", "com.google.android.apps.photos/3"
+            };
+            for (String s : defaults) {
+                list.add(s);
+            }
+            return list;
+        }
+        String[] parts = raw.split(",");
+        for (String p : parts) {
+            String v = p.trim();
+            if (!v.isEmpty()) {
+                list.add(v);
+            }
+        }
+        return list;
+    }
+
+    private void savePinnedKeys(List<String> keys) {
+        SharedPreferences sp = getSharedPreferences("parallel_home_pins", Context.MODE_PRIVATE);
+        StringBuilder sb = new StringBuilder();
+        for (String k : keys) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(k);
+        }
+        sp.edit().putString("pins", sb.toString()).apply();
     }
 
     private List<Integer> readSpacesUserIds() {
@@ -259,14 +445,20 @@ public class ParallelHomeActivity extends Activity {
     }
 
     private class AppAdapter extends BaseAdapter {
+        private final List<AppItem> list;
+
+        AppAdapter(List<AppItem> list) {
+            this.list = list;
+        }
+
         @Override
         public int getCount() {
-            return appList.size();
+            return list.size();
         }
 
         @Override
         public Object getItem(int pos) {
-            return appList.get(pos);
+            return list.get(pos);
         }
 
         @Override
@@ -276,7 +468,7 @@ public class ParallelHomeActivity extends Activity {
 
         @Override
         public View getView(int pos, View convert, ViewGroup parent) {
-            final AppItem item = appList.get(pos);
+            final AppItem item = list.get(pos);
             LinearLayout layout;
             ImageView iconView;
             TextView textView;

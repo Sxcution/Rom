@@ -1,9 +1,14 @@
 package ink.kscope.parallelspace;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.LauncherActivityInfo;
+import android.content.pm.LauncherApps;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.os.UserHandle;
+
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -239,12 +244,49 @@ public class ParallelSpaceActivity extends Activity {
             toast("create failed: " + userId);
             return;
         }
-        for (String pkg : readCsv(KEY_GLOBAL)) {
+        for (String pkg : ClonePolicy.DEFAULT_AUTO_CLONE_PACKAGES) {
             transactPackage(TX_DUPLICATE_PACKAGE, pkg, userId);
             addToKey(KEY_SPACE_PREFIX + userId, pkg);
         }
+        rebuildGlobalWhitelist();
+        cleanupCloneUser(userId);
         selectedSpaceIndex = spaces.size();
         reloadAll();
+    }
+
+    private UserHandle getUserHandle(int userId) {
+        try {
+            Method ofMethod = UserHandle.class.getMethod("of", int.class);
+            return (UserHandle) ofMethod.invoke(null, userId);
+        } catch (Throwable t) {
+            try {
+                java.lang.reflect.Constructor<?> constructor = UserHandle.class.getConstructor(int.class);
+                return (UserHandle) constructor.newInstance(userId);
+            } catch (Throwable t2) {
+                return android.os.Process.myUserHandle();
+            }
+        }
+    }
+
+    private void cleanupCloneUser(int userId) {
+        try {
+            LauncherApps la = (LauncherApps) getSystemService(Context.LAUNCHER_APPS_SERVICE);
+            UserHandle userHandle = getUserHandle(userId);
+            List<LauncherActivityInfo> activityList = la.getActivityList(null, userHandle);
+            if (activityList == null) return;
+            for (LauncherActivityInfo info : activityList) {
+                if (info.getComponentName() == null) continue;
+                String pkg = info.getComponentName().getPackageName();
+                if (pkg.equals(getPackageName())) {
+                    continue;
+                }
+                if (!ClonePolicy.isAllowedCloneApp(pkg)) {
+                    transactPackage(TX_REMOVE_PACKAGE, pkg, userId);
+                }
+            }
+        } catch (Throwable t) {
+            // Ignore errors
+        }
     }
 
     private void setPackageEnabled(String packageName, int userId, boolean enabled, CompoundButton button) {
@@ -283,7 +325,7 @@ public class ParallelSpaceActivity extends Activity {
                 continue;
             }
             String pkg = ri.activityInfo.packageName;
-            if (getPackageName().equals(pkg)) {
+            if (!ClonePolicy.isVisibleInToggle(pkg)) {
                 continue;
             }
             CharSequence labelSeq = ri.loadLabel(packageManager);
@@ -298,7 +340,18 @@ public class ParallelSpaceActivity extends Activity {
         Collections.sort(out, new Comparator<AppEntry>() {
             @Override
             public int compare(AppEntry a, AppEntry b) {
+                int weightA = getWeight(a.packageName);
+                int weightB = getWeight(b.packageName);
+                if (weightA != weightB) {
+                    return Integer.compare(weightA, weightB);
+                }
                 return a.label.compareToIgnoreCase(b.label);
+            }
+            private int getWeight(String pkg) {
+                if ("com.tencent.mm".equals(pkg)) return 1;
+                if ("com.android.chrome".equals(pkg)) return 2;
+                if ("com.google.android.apps.photos".equals(pkg)) return 3;
+                return 4;
             }
         });
         return out;
