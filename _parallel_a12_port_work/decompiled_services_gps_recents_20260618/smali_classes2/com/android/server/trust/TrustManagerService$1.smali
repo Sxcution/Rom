@@ -723,6 +723,16 @@
 
     move-result v1
 
+    invoke-static {v1}, Landroid/os/UserHandle;->getUserId(I)I
+
+    move-result v2
+
+    invoke-static {v2, p1}, Link/kaleidoscope/server/ParallelSpaceManagerService;->canInteract(II)Z
+
+    move-result v2
+
+    if-nez v2, :cond_parallel_is_device_locked
+
     const/4 v3, 0x0
 
     const/4 v4, 0x1
@@ -737,6 +747,7 @@
 
     move-result p1
 
+    :cond_parallel_is_device_locked
     invoke-static {}, Landroid/os/Binder;->clearCallingIdentity()J
 
     move-result-wide v0
@@ -797,6 +808,16 @@
 
     move-result v1
 
+    invoke-static {v1}, Landroid/os/UserHandle;->getUserId(I)I
+
+    move-result v2
+
+    invoke-static {v2, p1}, Link/kaleidoscope/server/ParallelSpaceManagerService;->canInteract(II)Z
+
+    move-result v2
+
+    if-nez v2, :cond_parallel_is_device_secure
+
     const/4 v3, 0x0
 
     const/4 v4, 0x1
@@ -811,6 +832,7 @@
 
     move-result p1
 
+    :cond_parallel_is_device_secure
     invoke-static {}, Landroid/os/Binder;->clearCallingIdentity()J
 
     move-result-wide v0
