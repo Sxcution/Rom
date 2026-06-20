@@ -51,6 +51,8 @@ public class ParallelHomeActivity extends Activity {
 
     private GridView homeGridView;
     private GridView drawerGridView;
+    private GridOverlayView homeGridOverlay;
+    private GridOverlayView drawerGridOverlay;
     private boolean isHomeTab = true;
 
     private final List<AppItem> masterAppList = new ArrayList<>();
@@ -121,13 +123,14 @@ public class ParallelHomeActivity extends Activity {
                     case DragEvent.ACTION_DRAG_LOCATION:
                     case DragEvent.ACTION_DRAG_ENTERED:
                         dismissActivePopup();
-                        int insertIndex = getInsertIndexFromCoords(
+                        int targetIndex = getNearestTargetIndexFromCoords(
                                 (int) event.getX(),
                                 (int) event.getY(),
-                                homeCols,
                                 homeGridView
                         );
-                        movePlaceholderTo(insertIndex);
+                        if (targetIndex != AdapterView.INVALID_POSITION && targetIndex != placeholderPosition) {
+                            movePlaceholderTo(targetIndex);
+                        }
                         return true;
 
                     case DragEvent.ACTION_DROP:
@@ -201,6 +204,12 @@ public class ParallelHomeActivity extends Activity {
         }
         if (drawerGridView != null) {
             drawerGridView.setNumColumns(drawerCols);
+        }
+        if (homeGridOverlay != null) {
+            homeGridOverlay.setGrid(homeCols, sp.getInt("launcher_home_grid_rows", 6));
+        }
+        if (drawerGridOverlay != null) {
+            drawerGridOverlay.setGrid(drawerCols, 6);
         }
 
         try {
@@ -487,6 +496,10 @@ public class ParallelHomeActivity extends Activity {
         homeGridView.setClipToPadding(false);
         root.addView(homeGridView, new FrameLayout.LayoutParams(-1, -1));
 
+        homeGridOverlay = new GridOverlayView(this);
+        homeGridOverlay.setPadding(dp(16), dp(16), dp(16), dp(16));
+        root.addView(homeGridOverlay, new FrameLayout.LayoutParams(-1, -1));
+
         drawerGridView = new GridView(this);
         drawerGridView.setNumColumns(drawerCols);
         drawerGridView.setVerticalSpacing(dp(20));
@@ -503,6 +516,10 @@ public class ParallelHomeActivity extends Activity {
         drawerGridView.setClipToPadding(false);
         drawerGridView.setVisibility(View.GONE);
         root.addView(drawerGridView, new FrameLayout.LayoutParams(-1, -1));
+
+        drawerGridOverlay = new GridOverlayView(this);
+        drawerGridOverlay.setPadding(dp(16), dp(24), dp(16), dp(16));
+        root.addView(drawerGridOverlay, new FrameLayout.LayoutParams(-1, -1));
 
         return root;
     }
@@ -827,95 +844,60 @@ public class ParallelHomeActivity extends Activity {
         }
     }
 
-    private int getInsertIndexFromCoords(int x, int y, int columns, GridView gridView) {
+    private int getNearestTargetIndexFromCoords(int x, int y, GridView gridView) {
         if (gridView == null || gridView.getAdapter() == null) {
             return AdapterView.INVALID_POSITION;
         }
 
-        int itemCount = gridView.getAdapter().getCount();
-        if (itemCount <= 0) {
-            return 0;
-        }
-
-        int actualColumns = gridView.getNumColumns();
-        if (actualColumns > 0 && actualColumns != GridView.AUTO_FIT) {
-            columns = actualColumns;
-        }
-
-        if (columns <= 0) {
+        int childCount = gridView.getChildCount();
+        if (childCount <= 0) {
             return AdapterView.INVALID_POSITION;
         }
 
-        int columnWidth = gridView.getColumnWidth();
-        int horizontalSpacing = gridView.getHorizontalSpacing();
-        int verticalSpacing = gridView.getVerticalSpacing();
+        int first = gridView.getFirstVisiblePosition();
+        int bestPos = placeholderPosition != AdapterView.INVALID_POSITION ? placeholderPosition : AdapterView.INVALID_POSITION;
+        
+        long bestDistSq = Long.MAX_VALUE;
+        long thresholdSq = (long) dp(12) * dp(12); // Hysteresis threshold of 12dp
 
-        View firstChild = gridView.getChildAt(0);
-        if (firstChild == null || columnWidth <= 0 || firstChild.getHeight() <= 0) {
-            return AdapterView.INVALID_POSITION;
+        // Check distance to current placeholder position first to establish baseline
+        if (placeholderPosition >= first && placeholderPosition < first + childCount) {
+            View placeholderChild = gridView.getChildAt(placeholderPosition - first);
+            if (placeholderChild != null) {
+                int cx = placeholderChild.getLeft() + placeholderChild.getWidth() / 2;
+                int cy = placeholderChild.getTop() + placeholderChild.getHeight() / 2;
+                long dx = x - cx;
+                long dy = y - cy;
+                bestDistSq = dx * dx + dy * dy - thresholdSq; // Give it advantage
+                bestPos = placeholderPosition;
+            }
         }
 
-        int rowHeight = firstChild.getHeight();
-        int cellStepX = columnWidth + horizontalSpacing;
-        int cellStepY = rowHeight + verticalSpacing;
+        for (int i = 0; i < childCount; i++) {
+            View child = gridView.getChildAt(i);
+            if (child == null) continue;
+            int pos = first + i;
+            if (pos < 0 || pos >= gridView.getAdapter().getCount()) {
+                continue;
+            }
+            if (pos == placeholderPosition) {
+                continue;
+            }
 
-        if (cellStepX <= 0 || cellStepY <= 0) {
-            return AdapterView.INVALID_POSITION;
+            int cx = child.getLeft() + child.getWidth() / 2;
+            int cy = child.getTop() + child.getHeight() / 2;
+
+            long dx = x - cx;
+            long dy = y - cy;
+            long distSq = dx * dx + dy * dy;
+
+            if (distSq < bestDistSq) {
+                bestDistSq = distSq;
+                bestPos = pos;
+            }
         }
 
-        int localX = x - gridView.getPaddingLeft();
-        if (localX < 0) {
-            return AdapterView.INVALID_POSITION;
-        }
-
-        int col = localX / cellStepX;
-        if (col < 0) {
-            return AdapterView.INVALID_POSITION;
-        }
-
-        if (col >= columns) {
-            col = columns - 1;
-        }
-
-        int colStart = col * cellStepX;
-        int insideCellX = localX - colStart;
-
-        int firstVisiblePosition = gridView.getFirstVisiblePosition();
-        int firstVisibleRow = firstVisiblePosition / columns;
-
-        int firstRowTop = firstChild.getTop();
-        int localY = y - firstRowTop;
-
-        if (localY < 0) {
-            return AdapterView.INVALID_POSITION;
-        }
-
-        int rowOffset = localY / cellStepY;
-        int targetRow = firstVisibleRow + rowOffset;
-
-        int targetPosition = targetRow * columns + col;
-
-        if (targetPosition < 0) {
-            return AdapterView.INVALID_POSITION;
-        }
-
-        if (targetPosition > itemCount) {
-            targetPosition = itemCount;
-        }
-
-        boolean insertAfter = insideCellX > (columnWidth / 2);
-
-        int insertIndex = insertAfter ? targetPosition + 1 : targetPosition;
-
-        if (insertIndex < 0) {
-            insertIndex = 0;
-        }
-
-        if (insertIndex > itemCount) {
-            insertIndex = itemCount;
-        }
-
-        return insertIndex;
+        return bestPos;
     }
 
     private int dp(int val) {
@@ -1451,6 +1433,9 @@ public class ParallelHomeActivity extends Activity {
         placeholderPosition = position;
 
         isDraggingApp = true;
+        if (homeGridOverlay != null) {
+            homeGridOverlay.show();
+        }
         homeAdapter.notifyDataSetChanged();
 
         DragPayload payload = new DragPayload(position, false);
@@ -1476,6 +1461,9 @@ public class ParallelHomeActivity extends Activity {
         placeholderPosition = AdapterView.INVALID_POSITION;
 
         isDraggingApp = true;
+        if (homeGridOverlay != null) {
+            homeGridOverlay.show();
+        }
         if (homeAdapter != null) {
             homeAdapter.notifyDataSetChanged();
         }
@@ -1494,62 +1482,29 @@ public class ParallelHomeActivity extends Activity {
         if (insertIndex == AdapterView.INVALID_POSITION) {
             return;
         }
-
-        if (dragPlaceholder == null || dragBackupList == null) {
+        if (dragBackupList == null || dragPlaceholder == null) {
             return;
         }
 
-        if (draggedFromDrawer) {
-            List<AppItem> temp = new ArrayList<>(dragBackupList);
-            int emptyIndex = -1;
-            for (int i = 0; i < temp.size(); i++) {
-                if (temp.get(i).isEmpty) {
-                    emptyIndex = i;
-                    break;
-                }
-            }
-            if (emptyIndex != -1) {
-                temp.remove(emptyIndex);
-            } else {
-                // Home is full, do not allow drag-in
-                return;
-            }
+        final java.util.Map<String, android.graphics.Rect> before = captureVisibleItemRects(homeGridView);
 
-            if (insertIndex < 0) {
-                insertIndex = 0;
-            }
-            if (insertIndex > temp.size()) {
-                insertIndex = temp.size();
-            }
-
-            temp.add(insertIndex, dragPlaceholder);
-
-            pinnedAppList.clear();
-            pinnedAppList.addAll(temp);
-            placeholderPosition = insertIndex;
-            homeAdapter.notifyDataSetChanged();
-        } else {
-            // Dragged from home
-            if (draggedPosition < 0 || draggedPosition >= dragBackupList.size()) {
-                return;
-            }
-            List<AppItem> temp = new ArrayList<>(dragBackupList);
-            temp.remove(draggedPosition);
-
-            if (insertIndex < 0) {
-                insertIndex = 0;
-            }
-            if (insertIndex > temp.size()) {
-                insertIndex = temp.size();
-            }
-
-            temp.add(insertIndex, dragPlaceholder);
-
-            pinnedAppList.clear();
-            pinnedAppList.addAll(temp);
-            placeholderPosition = insertIndex;
-            homeAdapter.notifyDataSetChanged();
+        List<AppItem> preview = buildPreviewListFromBackup(insertIndex);
+        if (preview.isEmpty()) {
+            return;
         }
+
+        pinnedAppList.clear();
+        pinnedAppList.addAll(preview);
+        placeholderPosition = pinnedAppList.indexOf(dragPlaceholder);
+
+        homeAdapter.notifyDataSetChanged();
+
+        homeGridView.post(new Runnable() {
+            @Override
+            public void run() {
+                animateChangedItemPositions(homeGridView, before);
+            }
+        });
     }
 
     private void commitLauncherDrop() {
@@ -1610,6 +1565,12 @@ public class ParallelHomeActivity extends Activity {
         draggedFromDrawer = false;
         dragCommitted = false;
         isDraggingApp = false;
+        if (homeGridOverlay != null) {
+            homeGridOverlay.hide();
+        }
+        if (drawerGridOverlay != null) {
+            drawerGridOverlay.hide();
+        }
         if (homeAdapter != null) {
             homeAdapter.notifyDataSetChanged();
         }
@@ -1620,5 +1581,129 @@ public class ParallelHomeActivity extends Activity {
             activePopup.dismiss();
         }
         activePopup = null;
+    }
+
+    private List<AppItem> buildPreviewListFromBackup(int insertIndex) {
+        List<AppItem> preview = new ArrayList<>();
+        if (dragBackupList == null || dragPlaceholder == null) {
+            return preview;
+        }
+
+        if (draggedFromDrawer) {
+            List<AppItem> temp = new ArrayList<>(dragBackupList);
+            int emptyIndex = -1;
+            for (int i = 0; i < temp.size(); i++) {
+                if (temp.get(i).isEmpty) {
+                    emptyIndex = i;
+                    break;
+                }
+            }
+            if (emptyIndex != -1) {
+                temp.remove(emptyIndex);
+            } else {
+                return temp;
+            }
+
+            if (insertIndex < 0) {
+                insertIndex = 0;
+            }
+            if (insertIndex > temp.size()) {
+                insertIndex = temp.size();
+            }
+
+            temp.add(insertIndex, dragPlaceholder);
+            return temp;
+        } else {
+            if (draggedPosition < 0 || draggedPosition >= dragBackupList.size()) {
+                return new ArrayList<>(dragBackupList);
+            }
+            List<AppItem> temp = new ArrayList<>(dragBackupList);
+            temp.remove(draggedPosition);
+
+            if (insertIndex < 0) {
+                insertIndex = 0;
+            }
+            if (insertIndex > temp.size()) {
+                insertIndex = temp.size();
+            }
+
+            temp.add(insertIndex, dragPlaceholder);
+            return temp;
+        }
+    }
+
+    private String getStableAnimationKey(AppItem item, int index) {
+        if (item == null) {
+            return "empty:" + index;
+        }
+        if (isPlaceholder(item)) {
+            return "placeholder";
+        }
+        if (item.isEmpty) {
+            return "empty:" + index;
+        }
+        if (item.componentName != null) {
+            return item.componentName.getPackageName() + "/" + item.componentName.getClassName() + "/" + item.spaceNumber;
+        }
+        return "empty:" + index;
+    }
+
+    private java.util.Map<String, android.graphics.Rect> captureVisibleItemRects(GridView grid) {
+        java.util.Map<String, android.graphics.Rect> map = new java.util.HashMap<>();
+        if (grid == null || grid.getAdapter() == null) {
+            return map;
+        }
+        int first = grid.getFirstVisiblePosition();
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            View child = grid.getChildAt(i);
+            if (child == null) continue;
+            int pos = first + i;
+            if (pos >= 0 && pos < grid.getAdapter().getCount()) {
+                AppItem item = (AppItem) grid.getAdapter().getItem(pos);
+                String key = getStableAnimationKey(item, pos);
+                android.graphics.Rect r = new android.graphics.Rect(
+                    child.getLeft(),
+                    child.getTop(),
+                    child.getRight(),
+                    child.getBottom()
+                );
+                map.put(key, r);
+            }
+        }
+        return map;
+    }
+
+    private void animateChangedItemPositions(GridView grid, java.util.Map<String, android.graphics.Rect> before) {
+        if (grid == null || grid.getAdapter() == null) {
+            return;
+        }
+        int first = grid.getFirstVisiblePosition();
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            View child = grid.getChildAt(i);
+            if (child == null) continue;
+            int pos = first + i;
+            if (pos >= 0 && pos < grid.getAdapter().getCount()) {
+                AppItem item = (AppItem) grid.getAdapter().getItem(pos);
+                String key = getStableAnimationKey(item, pos);
+                
+                android.graphics.Rect old = before.get(key);
+                if (old == null) continue;
+
+                int dx = old.left - child.getLeft();
+                int dy = old.top - child.getTop();
+
+                if (dx != 0 || dy != 0) {
+                    child.animate().cancel();
+                    child.setTranslationX(dx);
+                    child.setTranslationY(dy);
+                    child.animate()
+                        .translationX(0)
+                        .translationY(0)
+                        .setDuration(180)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                        .start();
+                }
+            }
+        }
     }
 }
