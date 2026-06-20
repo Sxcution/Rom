@@ -1,0 +1,261 @@
+﻿diff --git a/_parallel_a12_port_work/ParallelSpaceSettingsApp/src/ink/kscope/parallelspace/ParallelSpaceActivity.java b/_parallel_a12_port_work/ParallelSpaceSettingsApp/src/ink/kscope/parallelspace/ParallelSpaceActivity.java
+index beff1b6..4c72fce 100644
+--- a/_parallel_a12_port_work/ParallelSpaceSettingsApp/src/ink/kscope/parallelspace/ParallelSpaceActivity.java
++++ b/_parallel_a12_port_work/ParallelSpaceSettingsApp/src/ink/kscope/parallelspace/ParallelSpaceActivity.java
+@@ -61,6 +61,7 @@ public class ParallelSpaceActivity extends Activity {
+     private LinearLayout tabsRow;
+     private LinearLayout appList;
+     private TextView titleView;
++    private TextView launcherHeaderBtn;
+     private int selectedSpaceIndex = 0;
+     private boolean rendering;
+ 
+@@ -78,14 +79,43 @@ public class ParallelSpaceActivity extends Activity {
+         root.setBackgroundColor(Color.rgb(33, 33, 33));
+         root.setPadding(dp(8), dp(8), dp(8), 0);
+ 
++        LinearLayout headerContainer = new LinearLayout(this);
++        headerContainer.setOrientation(LinearLayout.HORIZONTAL);
++        headerContainer.setGravity(Gravity.CENTER_VERTICAL);
++        headerContainer.setPadding(dp(4), 0, dp(4), dp(8));
++
+         titleView = new TextView(this);
+         titleView.setText("Parallel Space");
+         titleView.setTextColor(Color.rgb(238, 238, 238));
+         titleView.setTextSize(20);
+         titleView.setTypeface(Typeface.DEFAULT_BOLD);
+         titleView.setGravity(Gravity.CENTER_VERTICAL);
+-        titleView.setPadding(dp(4), 0, dp(4), dp(8));
+-        root.addView(titleView, new LinearLayout.LayoutParams(-1, dp(42)));
++        headerContainer.addView(titleView, new LinearLayout.LayoutParams(0, -1, 1f));
++
++        launcherHeaderBtn = new TextView(this);
++        launcherHeaderBtn.setText("Launcher Settings");
++        launcherHeaderBtn.setTextColor(Color.rgb(235, 220, 119));
++        launcherHeaderBtn.setTextSize(14);
++        launcherHeaderBtn.setTypeface(Typeface.DEFAULT_BOLD);
++        launcherHeaderBtn.setGravity(Gravity.CENTER);
++        launcherHeaderBtn.setPadding(dp(12), 0, dp(12), 0);
++        
++        android.graphics.drawable.GradientDrawable btnBg = new android.graphics.drawable.GradientDrawable();
++        btnBg.setColor(Color.rgb(56, 56, 56));
++        btnBg.setCornerRadius(dp(8));
++        launcherHeaderBtn.setBackground(btnBg);
++        
++        launcherHeaderBtn.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View view) {
++                selectedSpaceIndex = -1;
++                installedCache.clear();
++                renderTabs();
++                renderLauncherSettings();
++            }
++        });
++        headerContainer.addView(launcherHeaderBtn, new LinearLayout.LayoutParams(-2, dp(32)));
++        root.addView(headerContainer, new LinearLayout.LayoutParams(-1, dp(42)));
+ 
+         HorizontalScrollView tabScroll = new HorizontalScrollView(this);
+         tabScroll.setHorizontalScrollBarEnabled(false);
+@@ -108,14 +138,18 @@ public class ParallelSpaceActivity extends Activity {
+         spaces.clear();
+         spaces.addAll(readSpaces());
+         if (selectedSpaceIndex >= spaces.size()) {
+-            selectedSpaceIndex = Math.max(0, spaces.size() - 1);
++            selectedSpaceIndex = Math.max(-1, spaces.size() - 1);
+         }
+         if (apps.isEmpty()) {
+             apps.addAll(loadLaunchableApps());
+         }
+         installedCache.clear();
+         renderTabs();
+-        renderApps();
++        if (selectedSpaceIndex == -1) {
++            renderLauncherSettings();
++        } else {
++            renderApps();
++        }
+     }
+ 
+     private void renderTabs() {
+@@ -134,6 +168,16 @@ public class ParallelSpaceActivity extends Activity {
+             });
+             tabsRow.addView(tab);
+         }
++
++        if (launcherHeaderBtn != null) {
++            boolean active = (selectedSpaceIndex == -1);
++            launcherHeaderBtn.setTextColor(active ? Color.rgb(33, 33, 33) : Color.rgb(235, 220, 119));
++            android.graphics.drawable.GradientDrawable btnBg = new android.graphics.drawable.GradientDrawable();
++            btnBg.setColor(active ? Color.rgb(235, 220, 119) : Color.rgb(56, 56, 56));
++            btnBg.setCornerRadius(dp(8));
++            launcherHeaderBtn.setBackground(btnBg);
++        }
++
+         TextView add = makeTab("New", false);
+         add.setOnClickListener(new View.OnClickListener() {
+             @Override
+@@ -541,6 +585,164 @@ public class ParallelSpaceActivity extends Activity {
+         }
+     }
+ 
++    private void renderLauncherSettings() {
++        appList.removeAllViews();
++        titleView.setText("Launcher Settings");
++
++        final android.content.SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
++
++        // 1. Home Grid Layout Row
++        int homeCols = sp.getInt("launcher_home_grid_columns", 4);
++        appList.addView(makeSettingOptionRow("Bß╗æ cß╗Ñc m├án h├¼nh ch├¡nh", "Sß╗æ cß╗Öt ß╗⌐ng dß╗Ñng: " + homeCols, new View.OnClickListener() {
++            @Override
++            public void onClick(View v) {
++                showGridChooserDialog("Bß╗æ cß╗Ñc m├án h├¼nh ch├¡nh", "launcher_home_grid_columns");
++            }
++        }));
++
++        // 2. Drawer Grid Layout Row
++        int drawerCols = sp.getInt("launcher_drawer_grid_columns", 4);
++        appList.addView(makeSettingOptionRow("Bß╗æ cß╗Ñc App Drawer", "Sß╗æ cß╗Öt ß╗⌐ng dß╗Ñng: " + drawerCols, new View.OnClickListener() {
++            @Override
++            public void onClick(View v) {
++                showGridChooserDialog("Bß╗æ cß╗Ñc App Drawer", "launcher_drawer_grid_columns");
++            }
++        }));
++
++        // 3. Hide App Names on Home Row
++        boolean hideNames = sp.getBoolean("launcher_hide_app_names", true);
++        appList.addView(makeSettingToggleRow("ß║¿n t├¬n ß╗⌐ng dß╗Ñng ß╗ƒ Home", "ß║¿n t├¬n d╞░ß╗¢i icon ngo├ái m├án h├¼nh ch├¡nh", hideNames, new CompoundButton.OnCheckedChangeListener() {
++            @Override
++            public void onCheckedChanged(CompoundButton buttonView, boolean checked) {
++                sp.edit().putBoolean("launcher_hide_app_names", checked).apply();
++            }
++        }));
++
++        // 4. Disable Home Button Long Press Row
++        boolean disableHome = sp.getBoolean("launcher_disable_home_assistant", true);
++        appList.addView(makeSettingToggleRow("V├┤ hiß╗çu h├│a giß╗» n├║t Home", "Tß║»t k├¡ch hoß║ít trß╗ú l├╜ ß║úo khi nhß║Ñn ─æ├¿ n├║t Home", disableHome, new CompoundButton.OnCheckedChangeListener() {
++            @Override
++            public void onCheckedChanged(CompoundButton buttonView, boolean checked) {
++                sp.edit().putBoolean("launcher_disable_home_assistant", checked).apply();
++                
++                try {
++                    if (checked) {
++                        android.provider.Settings.Secure.putInt(getContentResolver(), "assist_long_press_home_enabled", 0);
++                        android.provider.Settings.Global.putInt(getContentResolver(), "long_press_on_home_behavior", 0);
++                    } else {
++                        android.provider.Settings.Secure.putInt(getContentResolver(), "assist_long_press_home_enabled", 1);
++                        android.provider.Settings.Global.putInt(getContentResolver(), "long_press_on_home_behavior", 2);
++                    }
++                } catch (Throwable t) {
++                    // Ignore
++                }
++            }
++        }));
++    }
++
++    private View makeSettingOptionRow(String title, String subtitle, View.OnClickListener onClickListener) {
++        LinearLayout row = new LinearLayout(this);
++        row.setOrientation(LinearLayout.HORIZONTAL);
++        row.setGravity(Gravity.CENTER_VERTICAL);
++        row.setPadding(dp(16), dp(12), dp(16), dp(12));
++        row.setBackgroundColor(Color.rgb(56, 56, 56));
++        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(76));
++        rowLp.setMargins(0, 0, 0, dp(6));
++        row.setLayoutParams(rowLp);
++
++        LinearLayout textWrap = new LinearLayout(this);
++        textWrap.setOrientation(LinearLayout.VERTICAL);
++        textWrap.setGravity(Gravity.CENTER_VERTICAL);
++        
++        TextView label = new TextView(this);
++        label.setSingleLine(true);
++        label.setText(title);
++        label.setTextColor(Color.rgb(224, 224, 224));
++        label.setTextSize(18);
++        
++        TextView sub = new TextView(this);
++        sub.setSingleLine(true);
++        sub.setText(subtitle);
++        sub.setTextColor(Color.rgb(180, 180, 180));
++        sub.setTextSize(13);
++        
++        textWrap.addView(label, new LinearLayout.LayoutParams(-1, -2));
++        textWrap.addView(sub, new LinearLayout.LayoutParams(-1, -2));
++        row.addView(textWrap, new LinearLayout.LayoutParams(0, -1, 1));
++
++        row.setOnClickListener(onClickListener);
++        return row;
++    }
++
++    private View makeSettingToggleRow(String title, String subtitle, boolean checked, CompoundButton.OnCheckedChangeListener onCheckedChangeListener) {
++        LinearLayout row = new LinearLayout(this);
++        row.setOrientation(LinearLayout.HORIZONTAL);
++        row.setGravity(Gravity.CENTER_VERTICAL);
++        row.setPadding(dp(16), dp(12), dp(10), dp(12));
++        row.setBackgroundColor(Color.rgb(56, 56, 56));
++        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(76));
++        rowLp.setMargins(0, 0, 0, dp(6));
++        row.setLayoutParams(rowLp);
++
++        LinearLayout textWrap = new LinearLayout(this);
++        textWrap.setOrientation(LinearLayout.VERTICAL);
++        textWrap.setGravity(Gravity.CENTER_VERTICAL);
++        
++        TextView label = new TextView(this);
++        label.setSingleLine(true);
++        label.setText(title);
++        label.setTextColor(Color.rgb(224, 224, 224));
++        label.setTextSize(18);
++        
++        TextView sub = new TextView(this);
++        sub.setSingleLine(true);
++        sub.setText(subtitle);
++        sub.setTextColor(Color.rgb(180, 180, 180));
++        sub.setTextSize(13);
++        
++        textWrap.addView(label, new LinearLayout.LayoutParams(-1, -2));
++        textWrap.addView(sub, new LinearLayout.LayoutParams(-1, -2));
++        row.addView(textWrap, new LinearLayout.LayoutParams(0, -1, 1));
++
++        final Switch toggle = new Switch(this);
++        toggle.setChecked(checked);
++        toggle.setOnCheckedChangeListener(onCheckedChangeListener);
++        row.addView(toggle, new LinearLayout.LayoutParams(dp(70), -2));
++        row.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View view) {
++                toggle.toggle();
++            }
++        });
++        return row;
++    }
++
++    private void showGridChooserDialog(final String title, final String prefKey) {
++        final android.content.SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
++        final String[] items = {"3 cß╗Öt", "4 cß╗Öt", "5 cß╗Öt", "6 cß╗Öt"};
++        final int[] values = {3, 4, 5, 6};
++        int currentVal = sp.getInt(prefKey, 4);
++        int selectedIndex = 1;
++        for (int i = 0; i < values.length; i++) {
++            if (values[i] == currentVal) {
++                selectedIndex = i;
++                break;
++            }
++        }
++
++        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
++        builder.setTitle(title);
++        builder.setSingleChoiceItems(items, selectedIndex, new android.content.DialogInterface.OnClickListener() {
++            @Override
++            public void onClick(android.content.DialogInterface dialog, int which) {
++                sp.edit().putInt(prefKey, values[which]).apply();
++                dialog.dismiss();
++                renderLauncherSettings();
++            }
++        });
++        builder.show();
++    }
++
+     private void toast(String message) {
+         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+     }

@@ -43,4 +43,8 @@ print_all_cmds.py
 scratch_find_build.py
 *.list
 
+# Nova Launcher decompiled folders
+NovaLaucher/
+**/NovaLauncher/
+
 

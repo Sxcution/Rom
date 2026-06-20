@@ -1,10 +1,12 @@
 package ink.kscope.parallelspace;
 
 import android.app.Activity;
+import android.content.ClipData;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.view.DragEvent;
 import android.content.pm.LauncherActivityInfo;
 import android.content.pm.LauncherApps;
 import android.content.pm.PackageManager;
@@ -41,15 +43,13 @@ public class ParallelHomeActivity extends Activity {
     private static final String DESCRIPTOR = "ink.kaleidoscope.IParallelSpaceManager";
     private static final String SERVICE_NAME = "parallel";
     private static final int TX_GET_USERS = 3;
+    private static ParallelHomeActivity sInstance;
 
     private LauncherApps launcherApps;
     private IBinder parallelService;
 
-    private TextView titleView;
     private GridView homeGridView;
     private GridView drawerGridView;
-    private TextView btnHome;
-    private TextView btnApps;
     private boolean isHomeTab = true;
 
     private final List<AppItem> masterAppList = new ArrayList<>();
@@ -58,25 +58,72 @@ public class ParallelHomeActivity extends Activity {
     private AppAdapter homeAdapter;
     private AppAdapter drawerAdapter;
 
+    private android.view.VelocityTracker velocityTracker;
+    private float startY;
+    private float startRawY;
+    private float initialTranslationY;
+    private boolean isDragging = false;
+    private int touchSlop = 0;
+
+    private AppItem draggedFromDrawer = null;
+    private int draggedPosition = -1;
+    private android.widget.PopupWindow activePopup;
+    private boolean isDraggingApp = false;
+    private boolean isTouchDownOnIcon = false;
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        sInstance = this;
         launcherApps = (LauncherApps) getSystemService(Context.LAUNCHER_APPS_SERVICE);
         parallelService = getService(SERVICE_NAME);
         
         setContentView(buildLayout());
 
+        homeGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                if (position >= 0 && position < pinnedAppList.size()) {
+                    AppItem item = pinnedAppList.get(position);
+                    if (item.isEmpty) return;
+                    try {
+                        launcherApps.startMainActivity(item.componentName, item.userHandle, null, null);
+                    } catch (Throwable t) {
+                        Toast.makeText(ParallelHomeActivity.this, "Failed to launch: " + item.label, Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+
+        drawerGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                if (position >= 0 && position < masterAppList.size()) {
+                    AppItem item = masterAppList.get(position);
+                    try {
+                        launcherApps.startMainActivity(item.componentName, item.userHandle, null, null);
+                    } catch (Throwable t) {
+                        Toast.makeText(ParallelHomeActivity.this, "Failed to launch: " + item.label, Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+
         homeGridView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                AppItem item = pinnedAppList.get(position);
-                String key = item.componentName.getPackageName() + "/" + item.spaceNumber;
-                List<String> pins = getPinnedKeys();
-                if (pins.contains(key)) {
-                    pins.remove(key);
-                    savePinnedKeys(pins);
-                    loadApps();
-                    Toast.makeText(ParallelHomeActivity.this, "Unpinned " + item.label + " from Home", Toast.LENGTH_SHORT).show();
+                if (position >= 0 && position < pinnedAppList.size()) {
+                    AppItem item = pinnedAppList.get(position);
+                    if (item.isEmpty) return false;
+                    draggedFromDrawer = null;
+                    draggedPosition = position;
+                    isDraggingApp = true;
+                    
+                    showPopupMenu(view, item, true);
+                    
+                    ClipData data = ClipData.newPlainText("app_item", "");
+                    View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(view);
+                    view.startDragAndDrop(data, shadowBuilder, null, 0);
                 }
                 return true;
             }
@@ -85,138 +132,466 @@ public class ParallelHomeActivity extends Activity {
         drawerGridView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                AppItem item = masterAppList.get(position);
-                String key = item.componentName.getPackageName() + "/" + item.spaceNumber;
-                List<String> pins = getPinnedKeys();
-                if (pins.contains(key)) {
-                    Toast.makeText(ParallelHomeActivity.this, item.label + " is already pinned!", Toast.LENGTH_SHORT).show();
-                } else {
-                    pins.add(key);
-                    savePinnedKeys(pins);
-                    loadApps();
-                    Toast.makeText(ParallelHomeActivity.this, "Pinned " + item.label + " to Home", Toast.LENGTH_SHORT).show();
+                if (position >= 0 && position < masterAppList.size()) {
+                    AppItem item = masterAppList.get(position);
+                    draggedFromDrawer = item;
+                    draggedPosition = -1;
+                    isDraggingApp = true;
+                    
+                    showPopupMenu(view, item, false);
+                    
+                    ClipData data = ClipData.newPlainText("app_item", "");
+                    View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(view);
+                    view.startDragAndDrop(data, shadowBuilder, null, 0);
                 }
                 return true;
             }
         });
 
+        homeGridView.setOnDragListener(new View.OnDragListener() {
+            @Override
+            public boolean onDrag(View v, DragEvent event) {
+                int x = (int) event.getX();
+                int y = (int) event.getY();
+                
+                SharedPreferences settingsSp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+                int homeCols = settingsSp.getInt("launcher_home_grid_columns", 4);
+                int homeRows = settingsSp.getInt("launcher_home_grid_rows", 6);
+                
+                int targetPosition = getGridPositionFromCoords(x, y, homeCols, homeRows, homeGridView);
+
+                switch (event.getAction()) {
+                    case DragEvent.ACTION_DRAG_STARTED:
+                        android.util.Log.d("ParallelHome", "onDrag: ACTION_DRAG_STARTED");
+                        isDraggingApp = true;
+                        homeAdapter.notifyDataSetChanged();
+                        return true;
+                        
+                    case DragEvent.ACTION_DRAG_LOCATION:
+                        // Limit logs to avoid spam
+                        if (Math.random() < 0.1) {
+                            android.util.Log.d("ParallelHome", "onDrag: ACTION_DRAG_LOCATION x=" + x + ", y=" + y + ", targetPosition=" + targetPosition);
+                        }
+                        if (activePopup != null) {
+                            activePopup.dismiss();
+                        }
+                        return true;
+                        
+                    case DragEvent.ACTION_DROP:
+                        android.util.Log.d("ParallelHome", "onDrag: ACTION_DROP targetPosition=" + targetPosition + ", draggedPosition=" + draggedPosition + ", draggedFromDrawer=" + (draggedFromDrawer != null ? draggedFromDrawer.label : "null"));
+                        if (targetPosition == AdapterView.INVALID_POSITION) {
+                            android.util.Log.d("ParallelHome", "onDrag: Drop target position is INVALID_POSITION");
+                            return false;
+                        }
+                        
+                        if (draggedFromDrawer != null) {
+                            AppItem item = draggedFromDrawer;
+                            String key = item.componentName.getPackageName() + "/" + item.spaceNumber;
+                            
+                            boolean alreadyPinned = false;
+                            for (AppItem pi : pinnedAppList) {
+                                if (!pi.isEmpty) {
+                                    String piKey = pi.componentName.getPackageName() + "/" + pi.spaceNumber;
+                                    if (piKey.equals(key)) {
+                                        alreadyPinned = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (alreadyPinned) {
+                                Toast.makeText(ParallelHomeActivity.this, item.label + " đã được ghim từ trước!", Toast.LENGTH_SHORT).show();
+                            } else {
+                                if (targetPosition >= 0 && targetPosition < pinnedAppList.size()) {
+                                    AppItem oldItem = pinnedAppList.get(targetPosition);
+                                    pinnedAppList.set(targetPosition, item);
+                                    if (oldItem != null && !oldItem.isEmpty) {
+                                        // Move oldItem to the first empty cell
+                                        for (int i = 0; i < pinnedAppList.size(); i++) {
+                                            if (pinnedAppList.get(i).isEmpty) {
+                                                pinnedAppList.set(i, oldItem);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    saveHomePins();
+                                    loadApps();
+                                    Toast.makeText(ParallelHomeActivity.this, "Đã ghim " + item.label + " vào màn hình chính", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                        } else if (draggedPosition != -1) {
+                            if (targetPosition != draggedPosition) {
+                                if (targetPosition >= 0 && targetPosition < pinnedAppList.size()) {
+                                    AppItem temp = pinnedAppList.get(targetPosition);
+                                    AppItem dragItem = pinnedAppList.get(draggedPosition);
+                                    
+                                    android.util.Log.d("ParallelHome", "onDrag: Swapping " + (dragItem != null ? dragItem.label : "null") + " at " + draggedPosition + " with " + (temp != null ? temp.label : "null") + " at " + targetPosition);
+                                    android.util.Log.d("ParallelHome", "onDrag: BEFORE set: 0=" + pinnedAppList.get(0).label + " (empty=" + pinnedAppList.get(0).isEmpty + "), 1=" + pinnedAppList.get(1).label + " (empty=" + pinnedAppList.get(1).isEmpty + ")");
+                                    
+                                    pinnedAppList.set(targetPosition, dragItem);
+                                    pinnedAppList.set(draggedPosition, temp);
+                                    
+                                    android.util.Log.d("ParallelHome", "onDrag: AFTER set: 0=" + pinnedAppList.get(0).label + " (empty=" + pinnedAppList.get(0).isEmpty + "), 1=" + pinnedAppList.get(1).label + " (empty=" + pinnedAppList.get(1).isEmpty + ")");
+                                    
+                                    saveHomePins();
+                                    loadApps();
+                                }
+                            }
+                        }
+                        return true;
+                        
+                    case DragEvent.ACTION_DRAG_ENDED:
+                        android.util.Log.d("ParallelHome", "onDrag: ACTION_DRAG_ENDED");
+                        isDraggingApp = false;
+                        draggedFromDrawer = null;
+                        draggedPosition = -1;
+                        homeAdapter.notifyDataSetChanged();
+                        return true;
+                }
+                return false;
+            }
+        });
+
+        drawerGridView.setOnDragListener(new View.OnDragListener() {
+            @Override
+            public boolean onDrag(View v, DragEvent event) {
+                switch (event.getAction()) {
+                    case DragEvent.ACTION_DRAG_STARTED:
+                        return true;
+                    case DragEvent.ACTION_DRAG_LOCATION:
+                        if (activePopup != null) {
+                            activePopup.dismiss();
+                        }
+                        animateDrawerTo(false);
+                        return true;
+                }
+                return false;
+            }
+        });
+
+        homeGridView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int left, int top, int right, int bottom,
+                                       int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                int height = bottom - top;
+                int oldHeight = oldBottom - oldTop;
+                if (height > 0 && height != oldHeight) {
+                    if (homeAdapter != null) {
+                        homeAdapter.notifyDataSetChanged();
+                    }
+                }
+            }
+        });
+
         loadApps();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        sInstance = null;
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        
+        SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+        int homeCols = sp.getInt("launcher_home_grid_columns", 4);
+        int drawerCols = sp.getInt("launcher_drawer_grid_columns", 4);
+        
+        if (homeGridView != null) {
+            homeGridView.setNumColumns(homeCols);
+        }
+        if (drawerGridView != null) {
+            drawerGridView.setNumColumns(drawerCols);
+        }
+
+        try {
+            boolean disableHome = sp.getBoolean("launcher_disable_home_assistant", true);
+            if (disableHome) {
+                android.provider.Settings.Secure.putInt(getContentResolver(), "assist_long_press_home_enabled", 0);
+                android.provider.Settings.Global.putInt(getContentResolver(), "long_press_on_home_behavior", 0);
+            } else {
+                android.provider.Settings.Secure.putInt(getContentResolver(), "assist_long_press_home_enabled", 1);
+                android.provider.Settings.Global.putInt(getContentResolver(), "long_press_on_home_behavior", 2);
+            }
+        } catch (Throwable t) {
+            // Ignore
+        }
+
+        try {
+            String myListener = getPackageName() + "/" + NotificationListener.class.getName();
+            String enabledListeners = android.provider.Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+            if (enabledListeners == null) {
+                enabledListeners = "";
+            }
+            if (!enabledListeners.contains(myListener)) {
+                if (!enabledListeners.isEmpty()) {
+                    enabledListeners += ":";
+                }
+                enabledListeners += myListener;
+                android.provider.Settings.Secure.putString(getContentResolver(), "enabled_notification_listeners", enabledListeners);
+            }
+        } catch (Throwable t) {
+            // Ignore
+        }
+
         loadApps();
     }
 
     @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (Intent.ACTION_MAIN.equals(intent.getAction()) && intent.hasCategory(Intent.CATEGORY_HOME)) {
+            if (!isHomeTab) {
+                animateDrawerTo(false);
+            }
+        }
+    }
+
+    @Override
     public void onBackPressed() {
-        // Disallow backing out of the launcher
+        if (!isHomeTab) {
+            animateDrawerTo(false);
+        }
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        if (isDraggingApp) {
+            return super.dispatchTouchEvent(ev);
+        }
+
+        if (touchSlop == 0) {
+            touchSlop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
+            android.util.Log.d("ParallelHome", "touchSlop initialized to: " + touchSlop);
+        }
+
+        if (velocityTracker == null) {
+            velocityTracker = android.view.VelocityTracker.obtain();
+        }
+        velocityTracker.addMovement(ev);
+
+        int screenHeight = getResources().getDisplayMetrics().heightPixels;
+
+        switch (ev.getAction()) {
+            case android.view.MotionEvent.ACTION_DOWN:
+                startY = ev.getRawY();
+                startRawY = ev.getRawY();
+                isDragging = false;
+                
+                // Cancel active animations to prevent overlay conflicts
+                drawerGridView.animate().cancel();
+                homeGridView.animate().cancel();
+                
+                if (isHomeTab) {
+                    initialTranslationY = screenHeight;
+                } else {
+                    initialTranslationY = drawerGridView.getTranslationY();
+                }
+
+                // Check if touch down is on a non-empty app icon
+                isTouchDownOnIcon = false;
+                if (isHomeTab) {
+                    if (homeGridView != null) {
+                        int[] loc = new int[2];
+                        homeGridView.getLocationOnScreen(loc);
+                        int x = (int) (ev.getRawX() - loc[0]);
+                        int y = (int) (ev.getRawY() - loc[1]);
+                        int position = homeGridView.pointToPosition(x, y);
+                        if (position >= 0 && position < pinnedAppList.size()) {
+                            AppItem item = pinnedAppList.get(position);
+                            if (item != null && !item.isEmpty) {
+                                isTouchDownOnIcon = true;
+                            }
+                        }
+                    }
+                } else {
+                    if (drawerGridView != null) {
+                        int[] loc = new int[2];
+                        drawerGridView.getLocationOnScreen(loc);
+                        int x = (int) (ev.getRawX() - loc[0]);
+                        int y = (int) (ev.getRawY() - loc[1]);
+                        int position = drawerGridView.pointToPosition(x, y);
+                        if (position >= 0 && position < masterAppList.size()) {
+                            AppItem item = masterAppList.get(position);
+                            if (item != null && !item.isEmpty) {
+                                isTouchDownOnIcon = true;
+                            }
+                        }
+                    }
+                }
+
+                android.util.Log.d("ParallelHome", "ACTION_DOWN: startRawY=" + startRawY + ", isHomeTab=" + isHomeTab + ", initialTranslationY=" + initialTranslationY + ", isTouchDownOnIcon=" + isTouchDownOnIcon);
+                break;
+
+            case android.view.MotionEvent.ACTION_MOVE:
+                float deltaY = ev.getRawY() - startRawY;
+                
+                if (!isDragging) {
+                    int threshold = isTouchDownOnIcon ? (touchSlop * 4) : touchSlop;
+                    if (Math.abs(deltaY) > threshold) {
+                        android.util.Log.d("ParallelHome", "Exceeded threshold (" + threshold + "): deltaY=" + deltaY + ", isHomeTab=" + isHomeTab);
+                        if (isHomeTab && deltaY < 0) {
+                            isDragging = true;
+                            drawerGridView.setVisibility(View.VISIBLE);
+                            drawerGridView.setTranslationY(screenHeight);
+                            drawerGridView.setAlpha(0.0f);
+                            initialTranslationY = screenHeight;
+                            startRawY = ev.getRawY();
+                            deltaY = 0;
+                            android.util.Log.d("ParallelHome", "Started dragging UP (opening drawer)");
+                        } else if (!isHomeTab && deltaY > 0 && isGridViewScrolledToTop(drawerGridView)) {
+                            isDragging = true;
+                            initialTranslationY = drawerGridView.getTranslationY();
+                            startRawY = ev.getRawY();
+                            deltaY = 0;
+                            android.util.Log.d("ParallelHome", "Started dragging DOWN (closing drawer)");
+                        }
+                    }
+                }
+
+                if (isDragging) {
+                    float newTranslationY = initialTranslationY + deltaY;
+                    if (newTranslationY < 0) {
+                        newTranslationY = 0;
+                    } else if (newTranslationY > screenHeight) {
+                        newTranslationY = screenHeight;
+                    }
+                    drawerGridView.setTranslationY(newTranslationY);
+                    
+                    float progress = 1.0f - (newTranslationY / (float) screenHeight);
+                    drawerGridView.setAlpha(progress);
+                    
+                    // Parallax: Scale down and fade out Home screen behind the drawer
+                    homeGridView.setAlpha(1.0f - (progress * 0.5f));
+                    homeGridView.setScaleX(1.0f - (progress * 0.05f));
+                    homeGridView.setScaleY(1.0f - (progress * 0.05f));
+                    
+                    android.util.Log.d("ParallelHome", "Dragging: deltaY=" + deltaY + ", newTranslationY=" + newTranslationY + ", alpha=" + progress);
+                    
+                    ev.setAction(android.view.MotionEvent.ACTION_CANCEL);
+                    super.dispatchTouchEvent(ev);
+                    return true;
+                }
+                break;
+
+            case android.view.MotionEvent.ACTION_UP:
+            case android.view.MotionEvent.ACTION_CANCEL:
+                android.util.Log.d("ParallelHome", "ACTION_UP/CANCEL: isDragging=" + isDragging);
+                if (isDragging) {
+                    isDragging = false;
+                    velocityTracker.computeCurrentVelocity(1000);
+                    float velocityY = velocityTracker.getYVelocity();
+                    
+                    float currentTranslationY = drawerGridView.getTranslationY();
+                    boolean shouldOpen = false;
+
+                    if (Math.abs(velocityY) > 1000) {
+                        shouldOpen = velocityY < 0;
+                        android.util.Log.d("ParallelHome", "Decision by Fling: velocityY=" + velocityY + " -> shouldOpen=" + shouldOpen);
+                    } else {
+                        shouldOpen = currentTranslationY < (screenHeight / 2.0f);
+                        android.util.Log.d("ParallelHome", "Decision by Position: currentTranslationY=" + currentTranslationY + " -> shouldOpen=" + shouldOpen);
+                    }
+
+                    animateDrawerTo(shouldOpen);
+                    
+                    if (velocityTracker != null) {
+                        velocityTracker.recycle();
+                        velocityTracker = null;
+                    }
+                    return true;
+                }
+                
+                if (velocityTracker != null) {
+                    velocityTracker.recycle();
+                    velocityTracker = null;
+                }
+                break;
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    private boolean isGridViewScrolledToTop(GridView gridView) {
+        if (gridView.getChildCount() == 0) {
+            return true;
+        }
+        boolean atTop = gridView.getFirstVisiblePosition() == 0 && gridView.getChildAt(0).getTop() >= 0;
+        android.util.Log.d("ParallelHome", "isGridViewScrolledToTop: " + atTop + " (firstVisible=" + gridView.getFirstVisiblePosition() + ", top=" + gridView.getChildAt(0).getTop() + ")");
+        return atTop;
+    }
+
+    private void animateDrawerTo(final boolean open) {
+        isHomeTab = !open;
+        final int screenHeight = getResources().getDisplayMetrics().heightPixels;
+        float targetY = open ? 0 : screenHeight;
+        float targetAlpha = open ? 1.0f : 0.0f;
+        float targetHomeAlpha = open ? 0.5f : 1.0f;
+        float targetHomeScale = open ? 0.95f : 1.0f;
+        
+        android.util.Log.d("ParallelHome", "animateDrawerTo: open=" + open + ", targetY=" + targetY + ", targetAlpha=" + targetAlpha);
+
+        drawerGridView.animate()
+            .translationY(targetY)
+            .alpha(targetAlpha)
+            .setDuration(280)
+            .setInterpolator(open ? new android.view.animation.OvershootInterpolator(0.8f) : new android.view.animation.AccelerateInterpolator())
+            .setListener(new android.animation.AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(android.animation.Animator animation) {
+                    if (!open) {
+                        drawerGridView.setVisibility(View.GONE);
+                    }
+                    android.util.Log.d("ParallelHome", "Animation End: visibility=" + (open ? "VISIBLE" : "GONE") + ", translationY=" + drawerGridView.getTranslationY() + ", alpha=" + drawerGridView.getAlpha());
+                }
+            })
+            .start();
+
+        homeGridView.animate()
+            .alpha(targetHomeAlpha)
+            .scaleX(targetHomeScale)
+            .scaleY(targetHomeScale)
+            .setDuration(280)
+            .setInterpolator(new android.view.animation.DecelerateInterpolator())
+            .start();
     }
 
     private View buildLayout() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(18, 18, 18));
+        SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+        int homeCols = sp.getInt("launcher_home_grid_columns", 4);
+        int drawerCols = sp.getInt("launcher_drawer_grid_columns", 4);
+
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Color.BLACK);
         root.setPadding(dp(16), dp(16), dp(16), dp(16));
 
-        titleView = new TextView(this);
-        titleView.setText("Home Screen");
-        titleView.setTextColor(Color.WHITE);
-        titleView.setTextSize(22);
-        titleView.setTypeface(Typeface.DEFAULT_BOLD);
-        titleView.setGravity(Gravity.CENTER_HORIZONTAL);
-        titleView.setPadding(0, dp(8), 0, dp(16));
-        root.addView(titleView, new LinearLayout.LayoutParams(-1, -2));
-
-        FrameLayout frameLayout = new FrameLayout(this);
-        LinearLayout.LayoutParams frameLp = new LinearLayout.LayoutParams(-1, 0, 1);
-        root.addView(frameLayout, frameLp);
-
         homeGridView = new GridView(this);
-        homeGridView.setNumColumns(4);
+        homeGridView.setNumColumns(homeCols);
         homeGridView.setVerticalSpacing(dp(20));
         homeGridView.setHorizontalSpacing(dp(10));
         homeGridView.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
-        frameLayout.addView(homeGridView, new FrameLayout.LayoutParams(-1, -1));
+        homeGridView.setVerticalScrollBarEnabled(false);
+        homeGridView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        root.addView(homeGridView, new FrameLayout.LayoutParams(-1, -1));
 
         drawerGridView = new GridView(this);
-        drawerGridView.setNumColumns(4);
+        drawerGridView.setNumColumns(drawerCols);
         drawerGridView.setVerticalSpacing(dp(20));
         drawerGridView.setHorizontalSpacing(dp(10));
         drawerGridView.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
+        drawerGridView.setBackgroundColor(Color.BLACK);
         drawerGridView.setVisibility(View.GONE);
-        frameLayout.addView(drawerGridView, new FrameLayout.LayoutParams(-1, -1));
-
-        // Bottom Navigation Bar
-        LinearLayout bottomNav = new LinearLayout(this);
-        bottomNav.setOrientation(LinearLayout.HORIZONTAL);
-        bottomNav.setGravity(Gravity.CENTER_VERTICAL);
-        bottomNav.setPadding(0, dp(8), 0, dp(8));
-        bottomNav.setBackgroundColor(Color.rgb(28, 28, 28));
-        LinearLayout.LayoutParams navLp = new LinearLayout.LayoutParams(-1, dp(56));
-        navLp.topMargin = dp(8);
-        root.addView(bottomNav, navLp);
-
-        btnHome = makeNavButton("Home", true);
-        btnApps = makeNavButton("Apps", false);
-        TextView btnSettings = makeNavButton("Settings", false);
-
-        btnHome.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showTab(true);
-            }
-        });
-
-        btnApps.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showTab(false);
-            }
-        });
-
-        btnSettings.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try {
-                    Intent intent = new Intent();
-                    intent.setClassName("ink.kscope.parallelspace", "ink.kscope.parallelspace.ParallelSpaceActivity");
-                    startActivity(intent);
-                } catch (Throwable t) {
-                    Toast.makeText(ParallelHomeActivity.this, "Failed to launch settings", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-
-        bottomNav.addView(btnHome, new LinearLayout.LayoutParams(0, -1, 1));
-        bottomNav.addView(btnApps, new LinearLayout.LayoutParams(0, -1, 1));
-        bottomNav.addView(btnSettings, new LinearLayout.LayoutParams(0, -1, 1));
+        root.addView(drawerGridView, new FrameLayout.LayoutParams(-1, -1));
 
         return root;
     }
 
-    private TextView makeNavButton(String label, boolean active) {
-        TextView btn = new TextView(this);
-        btn.setText(label);
-        btn.setGravity(Gravity.CENTER);
-        btn.setTextSize(16);
-        btn.setTypeface(Typeface.DEFAULT_BOLD);
-        btn.setTextColor(active ? Color.rgb(235, 220, 119) : Color.rgb(160, 160, 160));
-        return btn;
-    }
-
-    private void showTab(boolean showHome) {
-        isHomeTab = showHome;
-        titleView.setText(showHome ? "Home Screen" : "App Drawer");
-        homeGridView.setVisibility(showHome ? View.VISIBLE : View.GONE);
-        drawerGridView.setVisibility(showHome ? View.GONE : View.VISIBLE);
-        btnHome.setTextColor(showHome ? Color.rgb(235, 220, 119) : Color.rgb(160, 160, 160));
-        btnApps.setTextColor(showHome ? Color.rgb(160, 160, 160) : Color.rgb(235, 220, 119));
-    }
-
     private void loadApps() {
         masterAppList.clear();
+
+        SharedPreferences settingsSp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
 
         // 1. Load User 0 (Owner) apps
         UserHandle ownerUser = Process.myUserHandle();
@@ -229,8 +604,9 @@ public class ParallelHomeActivity extends Activity {
             if (ClonePolicy.isBlockedTrashApp(pkg)) {
                 continue;
             }
+            String customLabel = settingsSp.getString("custom_label_" + pkg + "_0", info.getLabel().toString());
             masterAppList.add(new AppItem(
-                info.getLabel().toString(),
+                customLabel,
                 info.getComponentName(),
                 info.getIcon(0),
                 ownerUser,
@@ -252,15 +628,13 @@ public class ParallelHomeActivity extends Activity {
                 List<LauncherActivityInfo> cloneList = launcherApps.getActivityList(null, userHandle);
                 for (LauncherActivityInfo info : cloneList) {
                     String pkg = info.getComponentName().getPackageName();
-                    if (pkg.equals(getPackageName())) {
-                        continue;
-                    }
-                    if (!ClonePolicy.isAllowedCloneApp(pkg)) {
+                    if (!pkg.equals("com.tencent.mm") && !pkg.equals("com.google.android.apps.photos")) {
                         continue;
                     }
                     Drawable badgedIcon = BadgeIconRenderer.renderBadgedIcon(this, info.getIcon(0), spaceNumber);
+                    String customLabel = settingsSp.getString("custom_label_" + pkg + "_" + spaceNumber, info.getLabel().toString());
                     masterAppList.add(new AppItem(
-                        info.getLabel().toString(),
+                        customLabel,
                         info.getComponentName(),
                         badgedIcon,
                         userHandle,
@@ -286,26 +660,58 @@ public class ParallelHomeActivity extends Activity {
 
         // 3. Load Pinned apps in Saved Order
         pinnedAppList.clear();
-        List<String> pinKeys = getPinnedKeys();
+        int homeCols = settingsSp.getInt("launcher_home_grid_columns", 4);
+        int homeRows = settingsSp.getInt("launcher_home_grid_rows", 6);
+        int gridSize = homeCols * homeRows;
+
+        List<String> pinKeys = getPinnedKeysList();
+        while (pinKeys.size() < gridSize) {
+            pinKeys.add("");
+        }
+        if (pinKeys.size() > gridSize) {
+            pinKeys = pinKeys.subList(0, gridSize);
+        }
+
         for (String key : pinKeys) {
-            for (AppItem item : masterAppList) {
-                String itemKey = item.componentName.getPackageName() + "/" + item.spaceNumber;
-                if (itemKey.equals(key)) {
-                    pinnedAppList.add(item);
-                    break;
+            if (key.isEmpty()) {
+                pinnedAppList.add(new AppItem());
+            } else {
+                AppItem found = null;
+                for (AppItem item : masterAppList) {
+                    String itemKey = item.componentName.getPackageName() + "/" + item.spaceNumber;
+                    if (itemKey.equals(key)) {
+                        found = item;
+                        break;
+                    }
+                }
+                if (found != null) {
+                    pinnedAppList.add(found);
+                } else {
+                    pinnedAppList.add(new AppItem());
                 }
             }
         }
 
+        // Debug logging for apps
+        android.util.Log.d("ParallelHome", "--- masterAppList ---");
+        for (AppItem item : masterAppList) {
+            android.util.Log.d("ParallelHome", "  App: " + item.label + ", pkg=" + (item.componentName != null ? item.componentName.getPackageName() : "null") + ", space=" + item.spaceNumber + ", isClone=" + item.isClone);
+        }
+        android.util.Log.d("ParallelHome", "--- pinnedAppList ---");
+        for (int i = 0; i < pinnedAppList.size(); i++) {
+            AppItem item = pinnedAppList.get(i);
+            android.util.Log.d("ParallelHome", "  Pin " + i + ": isEmpty=" + item.isEmpty + ", label=" + item.label + ", space=" + item.spaceNumber);
+        }
+
         if (homeAdapter == null) {
-            homeAdapter = new AppAdapter(pinnedAppList);
+            homeAdapter = new AppAdapter(pinnedAppList, true);
             homeGridView.setAdapter(homeAdapter);
         } else {
             homeAdapter.notifyDataSetChanged();
         }
 
         if (drawerAdapter == null) {
-            drawerAdapter = new AppAdapter(masterAppList);
+            drawerAdapter = new AppAdapter(masterAppList, false);
             drawerGridView.setAdapter(drawerAdapter);
         } else {
             drawerAdapter.notifyDataSetChanged();
@@ -313,29 +719,41 @@ public class ParallelHomeActivity extends Activity {
     }
 
     private List<String> getPinnedKeys() {
+        return getPinnedKeysList();
+    }
+
+    private List<String> getPinnedKeysList() {
         SharedPreferences sp = getSharedPreferences("parallel_home_pins", Context.MODE_PRIVATE);
         String raw = sp.getString("pins", null);
+        android.util.Log.d("ParallelHome", "getPinnedKeysList: read raw pins = " + raw);
         List<String> list = new ArrayList<>();
         if (raw == null || raw.trim().isEmpty()) {
-            // Default pinned list: WeChat user 0/1/2/3, Chrome 1/2/3, Photos 1/2/3
+            android.util.Log.d("ParallelHome", "getPinnedKeysList: raw pins is empty or null, loading defaults");
             String[] defaults = {
-                "com.tencent.mm/0", "com.tencent.mm/1", "com.tencent.mm/2", "com.tencent.mm/3",
-                "com.android.chrome/0", "com.android.chrome/1", "com.android.chrome/2", "com.android.chrome/3",
-                "com.google.android.apps.photos/0", "com.google.android.apps.photos/1", "com.google.android.apps.photos/2", "com.google.android.apps.photos/3"
+                "com.tencent.mm/0", "com.tencent.mm/1", "com.tencent.mm/2", "com.tencent.mm/3"
             };
             for (String s : defaults) {
                 list.add(s);
             }
             return list;
         }
-        String[] parts = raw.split(",");
+        String[] parts = raw.split(",", -1);
         for (String p : parts) {
-            String v = p.trim();
-            if (!v.isEmpty()) {
-                list.add(v);
-            }
+            list.add(p.trim());
         }
         return list;
+    }
+
+    private void saveHomePins() {
+        List<String> keys = new ArrayList<>();
+        for (AppItem item : pinnedAppList) {
+            if (item.isEmpty) {
+                keys.add("");
+            } else {
+                keys.add(item.componentName.getPackageName() + "/" + item.spaceNumber);
+            }
+        }
+        savePinnedKeys(keys);
     }
 
     private void savePinnedKeys(List<String> keys) {
@@ -345,7 +763,9 @@ public class ParallelHomeActivity extends Activity {
             if (sb.length() > 0) sb.append(",");
             sb.append(k);
         }
-        sp.edit().putString("pins", sb.toString()).apply();
+        String serialized = sb.toString();
+        android.util.Log.d("ParallelHome", "savePinnedKeys: saving pins = " + serialized);
+        sp.edit().putString("pins", serialized).apply();
     }
 
     private List<Integer> readSpacesUserIds() {
@@ -422,8 +842,93 @@ public class ParallelHomeActivity extends Activity {
         }
     }
 
+    private int getGridPositionFromCoords(int x, int y, int cols, int rows, GridView gridView) {
+        if (gridView == null || cols <= 0 || rows <= 0) {
+            return AdapterView.INVALID_POSITION;
+        }
+        int w = gridView.getWidth();
+        int h = gridView.getHeight();
+        if (w <= 0 || h <= 0) {
+            return AdapterView.INVALID_POSITION;
+        }
+        
+        int pl = gridView.getPaddingLeft();
+        int pr = gridView.getPaddingRight();
+        int pt = gridView.getPaddingTop();
+        int pb = gridView.getPaddingBottom();
+        
+        int usableW = w - pl - pr;
+        int usableH = h - pt - pb;
+        
+        if (usableW <= 0 || usableH <= 0) {
+            return AdapterView.INVALID_POSITION;
+        }
+        
+        int col = (x - pl) * cols / usableW;
+        int row = (y - pt) * rows / usableH;
+        
+        if (col < 0) col = 0;
+        if (col >= cols) col = cols - 1;
+        if (row < 0) row = 0;
+        if (row >= rows) row = rows - 1;
+        
+        int pos = row * cols + col;
+        if (pos < 0) pos = 0;
+        int maxPos = cols * rows - 1;
+        if (pos > maxPos) pos = maxPos;
+        
+        return pos;
+    }
+
     private int dp(int val) {
         return (int) (val * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    public static void refreshNotificationBadges() {
+        if (sInstance != null) {
+            sInstance.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    sInstance.refreshNotificationBadgesInternal();
+                }
+            });
+        }
+    }
+
+    private void refreshNotificationBadgesInternal() {
+        if (homeAdapter != null) {
+            homeAdapter.notifyDataSetChanged();
+        }
+        if (drawerAdapter != null) {
+            drawerAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private int getUserIdForSpace(int spaceNumber) {
+        if (spaceNumber == 0) {
+            return 0; // Owner user
+        }
+        List<Integer> cloneUserIds = readSpacesUserIds();
+        Collections.sort(cloneUserIds);
+        int index = spaceNumber - 1;
+        if (index >= 0 && index < cloneUserIds.size()) {
+            return cloneUserIds.get(index);
+        }
+        return -1;
+    }
+
+    private int getNotificationCountForApp(AppItem item) {
+        if (item == null || item.componentName == null) {
+            return 0;
+        }
+        int userId = getUserIdForSpace(item.spaceNumber);
+        if (userId == -1) {
+            return 0;
+        }
+        java.util.Map<String, Integer> counts = NotificationListener.getNotificationCounts();
+        String key = item.componentName.getPackageName() + "/" + userId;
+        Integer count = counts.get(key);
+        return count != null ? count : 0;
     }
 
     private static class AppItem {
@@ -433,6 +938,7 @@ public class ParallelHomeActivity extends Activity {
         final UserHandle userHandle;
         final int spaceNumber;
         final boolean isClone;
+        final boolean isEmpty;
 
         AppItem(String label, ComponentName comp, Drawable icon, UserHandle user, int space, boolean clone) {
             this.label = label;
@@ -441,14 +947,27 @@ public class ParallelHomeActivity extends Activity {
             this.userHandle = user;
             this.spaceNumber = space;
             this.isClone = clone;
+            this.isEmpty = false;
+        }
+
+        AppItem() {
+            this.label = "";
+            this.componentName = null;
+            this.icon = null;
+            this.userHandle = null;
+            this.spaceNumber = 0;
+            this.isClone = false;
+            this.isEmpty = true;
         }
     }
 
     private class AppAdapter extends BaseAdapter {
         private final List<AppItem> list;
+        private final boolean isHome;
 
-        AppAdapter(List<AppItem> list) {
+        AppAdapter(List<AppItem> list, boolean isHome) {
             this.list = list;
+            this.isHome = isHome;
         }
 
         @Override
@@ -467,58 +986,346 @@ public class ParallelHomeActivity extends Activity {
         }
 
         @Override
+        public boolean isEnabled(int pos) {
+            if (pos >= 0 && pos < list.size()) {
+                return !list.get(pos).isEmpty;
+            }
+            return super.isEnabled(pos);
+        }
+
+        @Override
+        public boolean areAllItemsEnabled() {
+            return false;
+        }
+
+        @Override
         public View getView(int pos, View convert, ViewGroup parent) {
             final AppItem item = list.get(pos);
             LinearLayout layout;
+            FrameLayout iconContainer;
             ImageView iconView;
+            TextView badgeView;
             TextView textView;
+
+            SharedPreferences settingsSp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+            int iconMode = settingsSp.getInt("launcher_icon_size_mode", 2); // default Large (56dp)
+            int baseIconSize = dp(56);
+            if (iconMode == 0) baseIconSize = dp(40);
+            else if (iconMode == 1) baseIconSize = dp(48);
+            else if (iconMode == 3) baseIconSize = dp(64);
+
+            int itemHeight = ViewGroup.LayoutParams.WRAP_CONTENT;
+            int paddingVertical = dp(8);
+            int iconSize = baseIconSize;
+            int textMarginTop = dp(6);
+            int textSize = 12;
+
+            if (isHome && parent.getHeight() > 0) {
+                int homeRows = settingsSp.getInt("launcher_home_grid_rows", 6);
+                int gridHeight = parent.getHeight() - parent.getPaddingTop() - parent.getPaddingBottom();
+                int totalGaps = dp(20) * (homeRows - 1);
+                itemHeight = (gridHeight - totalGaps) / homeRows;
+                
+                if (itemHeight < dp(70)) {
+                    paddingVertical = dp(2);
+                    textMarginTop = dp(2);
+                    textSize = 9;
+                } else if (itemHeight < dp(85)) {
+                    paddingVertical = dp(4);
+                    textMarginTop = dp(4);
+                    textSize = 11;
+                } else {
+                    paddingVertical = dp(8);
+                    textMarginTop = dp(6);
+                    textSize = 12;
+                }
+            }
 
             if (convert == null) {
                 layout = new LinearLayout(ParallelHomeActivity.this);
                 layout.setOrientation(LinearLayout.VERTICAL);
                 layout.setGravity(Gravity.CENTER);
-                layout.setPadding(dp(4), dp(8), dp(4), dp(8));
 
+                iconContainer = new FrameLayout(ParallelHomeActivity.this);
                 iconView = new ImageView(ParallelHomeActivity.this);
-                LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(56), dp(56));
-                iconLp.gravity = Gravity.CENTER_HORIZONTAL;
-                layout.addView(iconView, iconLp);
+                FrameLayout.LayoutParams iconViewLp = new FrameLayout.LayoutParams(-1, -1);
+                iconContainer.addView(iconView, iconViewLp);
+
+                badgeView = new TextView(ParallelHomeActivity.this);
+                badgeView.setGravity(Gravity.CENTER);
+                badgeView.setTextColor(Color.WHITE);
+                badgeView.setTypeface(Typeface.DEFAULT_BOLD);
+                
+                android.graphics.drawable.GradientDrawable badgeBg = new android.graphics.drawable.GradientDrawable();
+                badgeBg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                badgeBg.setColor(Color.RED);
+                badgeView.setBackground(badgeBg);
+                
+                FrameLayout.LayoutParams badgeLp = new FrameLayout.LayoutParams(dp(18), dp(18));
+                badgeLp.gravity = Gravity.TOP | Gravity.END;
+                iconContainer.addView(badgeView, badgeLp);
+
+                layout.addView(iconContainer);
 
                 textView = new TextView(ParallelHomeActivity.this);
                 textView.setGravity(Gravity.CENTER);
-                textView.setTextSize(12);
                 textView.setTextColor(Color.WHITE);
                 textView.setSingleLine(true);
                 textView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(-1, -2);
-                textLp.topMargin = dp(6);
-                layout.addView(textView, textLp);
+                layout.addView(textView);
             } else {
                 layout = (LinearLayout) convert;
-                iconView = (ImageView) layout.getChildAt(0);
+                iconContainer = (FrameLayout) layout.getChildAt(0);
+                iconView = (ImageView) iconContainer.getChildAt(0);
+                badgeView = (TextView) iconContainer.getChildAt(1);
                 textView = (TextView) layout.getChildAt(1);
             }
 
-            layout.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    try {
-                        launcherApps.startMainActivity(item.componentName, item.userHandle, null, null);
-                    } catch (Throwable t) {
-                        Toast.makeText(ParallelHomeActivity.this, "Failed to launch: " + item.label, Toast.LENGTH_SHORT).show();
+            layout.setPadding(dp(4), paddingVertical, dp(4), paddingVertical);
+            
+            ViewGroup.LayoutParams layoutLp = layout.getLayoutParams();
+            if (layoutLp == null) {
+                layoutLp = new android.widget.AbsListView.LayoutParams(-1, itemHeight);
+            } else {
+                layoutLp.height = itemHeight;
+            }
+            layout.setLayoutParams(layoutLp);
+
+            LinearLayout.LayoutParams containerLp = (LinearLayout.LayoutParams) iconContainer.getLayoutParams();
+            if (containerLp == null) {
+                containerLp = new LinearLayout.LayoutParams(iconSize, iconSize);
+            } else {
+                containerLp.width = iconSize;
+                containerLp.height = iconSize;
+            }
+            containerLp.gravity = Gravity.CENTER_HORIZONTAL;
+            iconContainer.setLayoutParams(containerLp);
+
+            badgeView.setTextSize(iconSize < dp(48) ? 8 : 10);
+            FrameLayout.LayoutParams badgeLp = (FrameLayout.LayoutParams) badgeView.getLayoutParams();
+            int badgeSize = iconSize < dp(48) ? dp(14) : dp(18);
+            if (badgeLp == null) {
+                badgeLp = new FrameLayout.LayoutParams(badgeSize, badgeSize);
+            } else {
+                badgeLp.width = badgeSize;
+                badgeLp.height = badgeSize;
+            }
+            badgeLp.gravity = Gravity.TOP | Gravity.END;
+            badgeView.setLayoutParams(badgeLp);
+
+            textView.setTextSize(textSize);
+            LinearLayout.LayoutParams textLp = (LinearLayout.LayoutParams) textView.getLayoutParams();
+            if (textLp == null) {
+                textLp = new LinearLayout.LayoutParams(-1, -2);
+            }
+            textLp.topMargin = textMarginTop;
+            textView.setLayoutParams(textLp);
+
+            if (item.isEmpty) {
+                if (isHome && isDraggingApp) {
+                    android.graphics.drawable.GradientDrawable dot = new android.graphics.drawable.GradientDrawable();
+                    dot.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                    dot.setCornerRadius(dp(8));
+                    dot.setStroke(dp(1), Color.argb(80, 255, 255, 255), dp(4), dp(4));
+                    layout.setBackground(dot);
+                } else {
+                    layout.setBackground(null);
+                }
+                iconContainer.setVisibility(View.INVISIBLE);
+                textView.setVisibility(View.INVISIBLE);
+            } else {
+                layout.setBackground(null);
+                iconContainer.setVisibility(View.VISIBLE);
+                iconView.setVisibility(View.VISIBLE);
+                iconView.setImageDrawable(item.icon);
+
+                int notificationCount = getNotificationCountForApp(item);
+                if (notificationCount > 0) {
+                    badgeView.setVisibility(View.VISIBLE);
+                    badgeView.setText(String.valueOf(notificationCount));
+                } else {
+                    badgeView.setVisibility(View.GONE);
+                }
+                
+                boolean hideNames = settingsSp.getBoolean("launcher_hide_app_names", true);
+                if (isHome && hideNames) {
+                    textView.setVisibility(View.GONE);
+                } else {
+                    textView.setVisibility(View.VISIBLE);
+                    if (item.isClone) {
+                        textView.setText(item.label + " (" + item.spaceNumber + ")");
+                    } else {
+                        textView.setText(item.label);
                     }
                 }
-            });
-
-            iconView.setImageDrawable(item.icon);
-            
-            if (item.isClone) {
-                textView.setText(item.label + " (" + item.spaceNumber + ")");
-            } else {
-                textView.setText(item.label);
             }
 
             return layout;
         }
+    }
+
+    private void showPopupMenu(final View anchorView, final AppItem item, final boolean isHomeView) {
+        if (activePopup != null) {
+            activePopup.dismiss();
+        }
+
+        LinearLayout popupLayout = new LinearLayout(this);
+        popupLayout.setOrientation(LinearLayout.HORIZONTAL);
+        popupLayout.setGravity(Gravity.CENTER);
+        popupLayout.setPadding(dp(8), dp(4), dp(8), dp(4));
+
+        android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+        gd.setColor(Color.parseColor("#222222"));
+        gd.setCornerRadius(dp(12));
+        gd.setStroke(dp(1), Color.parseColor("#444444"));
+        popupLayout.setBackground(gd);
+
+        popupLayout.setOnDragListener(new View.OnDragListener() {
+            @Override
+            public boolean onDrag(View v, DragEvent event) {
+                switch (event.getAction()) {
+                    case DragEvent.ACTION_DRAG_STARTED:
+                        return true;
+                    case DragEvent.ACTION_DRAG_ENTERED:
+                    case DragEvent.ACTION_DRAG_LOCATION:
+                        if (activePopup != null) {
+                            activePopup.dismiss();
+                        }
+                        return true;
+                }
+                return false;
+            }
+        });
+
+        // 1. Remove Button (✕)
+        ImageView btnRemove = createPopupButton(android.R.drawable.ic_menu_delete, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                activePopup.dismiss();
+                if (isHomeView) {
+                    int index = pinnedAppList.indexOf(item);
+                    if (index != -1) {
+                        pinnedAppList.set(index, new AppItem());
+                        saveHomePins();
+                        loadApps();
+                        Toast.makeText(ParallelHomeActivity.this, "Đã gỡ " + item.label + " khỏi Home", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    try {
+                        android.net.Uri packageUri = android.net.Uri.parse("package:" + item.componentName.getPackageName());
+                        Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri);
+                        uninstallIntent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+                        startActivity(uninstallIntent);
+                    } catch (Throwable t) {
+                        Toast.makeText(ParallelHomeActivity.this, "Không thể gỡ cài đặt ứng dụng hệ thống", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+        popupLayout.addView(btnRemove);
+
+        // 2. Info Button (ⓘ)
+        ImageView btnInfo = createPopupButton(android.R.drawable.ic_menu_info_details, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                activePopup.dismiss();
+                try {
+                    Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    intent.setData(android.net.Uri.parse("package:" + item.componentName.getPackageName()));
+                    startActivity(intent);
+                } catch (Throwable t) {
+                    Toast.makeText(ParallelHomeActivity.this, "Không thể mở thông tin ứng dụng", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        popupLayout.addView(btnInfo);
+
+        // 3. Edit Button (✏)
+        ImageView btnEdit = createPopupButton(android.R.drawable.ic_menu_edit, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                activePopup.dismiss();
+                showRenameDialog(item);
+            }
+        });
+        popupLayout.addView(btnEdit);
+
+        activePopup = new android.widget.PopupWindow(
+            popupLayout,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            true
+        );
+        activePopup.setElevation(dp(8));
+        
+        int[] location = new int[2];
+        anchorView.getLocationOnScreen(location);
+        activePopup.showAtLocation(
+            anchorView,
+            Gravity.NO_GRAVITY,
+            location[0] + (anchorView.getWidth() / 2) - dp(80),
+            location[1] - dp(64)
+        );
+    }
+
+    private ImageView createPopupButton(int drawableId, View.OnClickListener listener) {
+        ImageView btn = new ImageView(this);
+        btn.setImageResource(drawableId);
+        btn.setPadding(dp(8), dp(8), dp(8), dp(8));
+        btn.setOnClickListener(listener);
+        
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        bg.setColor(Color.TRANSPARENT);
+        btn.setBackground(bg);
+        
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(44), dp(44));
+        lp.setMargins(dp(2), 0, dp(2), 0);
+        btn.setLayoutParams(lp);
+        return btn;
+    }
+
+    private void showRenameDialog(final AppItem item) {
+        final android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Chỉnh sửa tên ứng dụng");
+
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setText(item.label);
+        input.setSingleLine(true);
+        
+        FrameLayout container = new FrameLayout(this);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.leftMargin = dp(24);
+        params.rightMargin = dp(24);
+        params.topMargin = dp(8);
+        params.bottomMargin = dp(8);
+        input.setLayoutParams(params);
+        container.addView(input);
+        builder.setView(container);
+
+        builder.setPositiveButton("Lưu", new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                String newName = input.getText().toString().trim();
+                if (!newName.isEmpty()) {
+                    saveCustomLabel(item, newName);
+                    loadApps();
+                }
+            }
+        });
+        builder.setNegativeButton("Hủy", new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+
+        builder.show();
+    }
+
+    private void saveCustomLabel(AppItem item, String label) {
+        SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+        String key = "custom_label_" + item.componentName.getPackageName() + "_" + item.spaceNumber;
+        sp.edit().putString(key, label).apply();
     }
 }

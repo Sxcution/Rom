@@ -9,6 +9,10 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.UserHandle;
 
+
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -61,6 +65,7 @@ public class ParallelSpaceActivity extends Activity {
     private LinearLayout tabsRow;
     private LinearLayout appList;
     private TextView titleView;
+    private TextView launcherHeaderBtn;
     private int selectedSpaceIndex = 0;
     private boolean rendering;
 
@@ -78,14 +83,43 @@ public class ParallelSpaceActivity extends Activity {
         root.setBackgroundColor(Color.rgb(33, 33, 33));
         root.setPadding(dp(8), dp(8), dp(8), 0);
 
+        LinearLayout headerContainer = new LinearLayout(this);
+        headerContainer.setOrientation(LinearLayout.HORIZONTAL);
+        headerContainer.setGravity(Gravity.CENTER_VERTICAL);
+        headerContainer.setPadding(dp(4), 0, dp(4), dp(8));
+
         titleView = new TextView(this);
         titleView.setText("Parallel Space");
         titleView.setTextColor(Color.rgb(238, 238, 238));
         titleView.setTextSize(20);
         titleView.setTypeface(Typeface.DEFAULT_BOLD);
         titleView.setGravity(Gravity.CENTER_VERTICAL);
-        titleView.setPadding(dp(4), 0, dp(4), dp(8));
-        root.addView(titleView, new LinearLayout.LayoutParams(-1, dp(42)));
+        headerContainer.addView(titleView, new LinearLayout.LayoutParams(0, -1, 1f));
+
+        launcherHeaderBtn = new TextView(this);
+        launcherHeaderBtn.setText("Launcher");
+        launcherHeaderBtn.setTextColor(Color.rgb(235, 220, 119));
+        launcherHeaderBtn.setTextSize(14);
+        launcherHeaderBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        launcherHeaderBtn.setGravity(Gravity.CENTER);
+        launcherHeaderBtn.setPadding(dp(12), 0, dp(12), 0);
+        
+        android.graphics.drawable.GradientDrawable btnBg = new android.graphics.drawable.GradientDrawable();
+        btnBg.setColor(Color.rgb(56, 56, 56));
+        btnBg.setCornerRadius(dp(8));
+        launcherHeaderBtn.setBackground(btnBg);
+        
+        launcherHeaderBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                selectedSpaceIndex = -1;
+                installedCache.clear();
+                renderTabs();
+                renderLauncherSettings();
+            }
+        });
+        headerContainer.addView(launcherHeaderBtn, new LinearLayout.LayoutParams(-2, dp(32)));
+        root.addView(headerContainer, new LinearLayout.LayoutParams(-1, dp(42)));
 
         HorizontalScrollView tabScroll = new HorizontalScrollView(this);
         tabScroll.setHorizontalScrollBarEnabled(false);
@@ -108,14 +142,47 @@ public class ParallelSpaceActivity extends Activity {
         spaces.clear();
         spaces.addAll(readSpaces());
         if (selectedSpaceIndex >= spaces.size()) {
-            selectedSpaceIndex = Math.max(0, spaces.size() - 1);
+            selectedSpaceIndex = Math.max(-1, spaces.size() - 1);
         }
         if (apps.isEmpty()) {
             apps.addAll(loadLaunchableApps());
         }
         installedCache.clear();
+
+        cleanOrphanedSettings();
+
         renderTabs();
-        renderApps();
+        if (selectedSpaceIndex == -1) {
+            renderLauncherSettings();
+        } else {
+            renderApps();
+        }
+    }
+
+    private void cleanOrphanedSettings() {
+        try {
+            java.util.Set<Integer> activeUserIds = new java.util.HashSet<>();
+            for (SpaceInfo space : spaces) {
+                activeUserIds.add(space.userId);
+            }
+
+            boolean changed = false;
+            for (int uid = 10; uid < 100; uid++) {
+                if (!activeUserIds.contains(uid)) {
+                    String key = KEY_SPACE_PREFIX + uid;
+                    String val = Settings.Secure.getString(getContentResolver(), key);
+                    if (val != null && !val.isEmpty()) {
+                        Settings.Secure.putString(getContentResolver(), key, "");
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) {
+                rebuildGlobalWhitelist();
+            }
+        } catch (Throwable t) {
+            // Ignore
+        }
     }
 
     private void renderTabs() {
@@ -134,11 +201,21 @@ public class ParallelSpaceActivity extends Activity {
             });
             tabsRow.addView(tab);
         }
+
+        if (launcherHeaderBtn != null) {
+            boolean active = (selectedSpaceIndex == -1);
+            launcherHeaderBtn.setTextColor(active ? Color.rgb(33, 33, 33) : Color.rgb(235, 220, 119));
+            android.graphics.drawable.GradientDrawable btnBg = new android.graphics.drawable.GradientDrawable();
+            btnBg.setColor(active ? Color.rgb(235, 220, 119) : Color.rgb(56, 56, 56));
+            btnBg.setCornerRadius(dp(8));
+            launcherHeaderBtn.setBackground(btnBg);
+        }
+
         TextView add = makeTab("New", false);
         add.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                createSpace();
+                showCreateSpaceConfirmDialog();
             }
         });
         tabsRow.addView(add);
@@ -213,21 +290,27 @@ public class ParallelSpaceActivity extends Activity {
         row.addView(textWrap, new LinearLayout.LayoutParams(0, -1, 1));
 
         final Switch toggle = new Switch(this);
-        toggle.setChecked(isEnabledForUser(app.packageName, userId));
-        toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton button, boolean checked) {
-                if (rendering) {
-                    return;
+        if (userId == 0) {
+            toggle.setVisibility(View.GONE);
+        } else {
+            toggle.setChecked(isEnabledForUser(app.packageName, userId));
+            toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton button, boolean checked) {
+                    if (rendering) {
+                        return;
+                    }
+                    setPackageEnabled(app.packageName, userId, checked, button);
                 }
-                setPackageEnabled(app.packageName, userId, checked, button);
-            }
-        });
+            });
+        }
         row.addView(toggle, new LinearLayout.LayoutParams(dp(70), -2));
         row.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                toggle.toggle();
+                if (userId != 0) {
+                    toggle.toggle();
+                }
             }
         });
         return row;
@@ -252,6 +335,25 @@ public class ParallelSpaceActivity extends Activity {
         cleanupCloneUser(userId);
         selectedSpaceIndex = spaces.size();
         reloadAll();
+    }
+
+    private void showCreateSpaceConfirmDialog() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Tạo Không gian Clone mới");
+        builder.setMessage("Bạn có chắc chắn muốn tạo thêm một không gian clone mới không?");
+        builder.setPositiveButton("Tạo mới", new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                createSpace();
+            }
+        });
+        builder.setNegativeButton("Hủy", new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        builder.show();
     }
 
     private UserHandle getUserHandle(int userId) {
@@ -539,6 +641,238 @@ public class ParallelSpaceActivity extends Activity {
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    private void renderLauncherSettings() {
+        appList.removeAllViews();
+        titleView.setText("Launcher");
+
+        final android.content.SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+
+        // 1. Home Grid Layout Row (Columns)
+        int homeCols = sp.getInt("launcher_home_grid_columns", 4);
+        appList.addView(makeSettingOptionRow("Bố cục cột màn hình chính", "Số cột ứng dụng: " + homeCols, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showGridChooserDialog("Bố cục cột màn hình chính", "launcher_home_grid_columns");
+            }
+        }));
+
+        // 1b. Home Grid Layout Rows (Rows)
+        int homeRows = sp.getInt("launcher_home_grid_rows", 6);
+        appList.addView(makeSettingOptionRow("Bố cục hàng màn hình chính", "Số hàng ứng dụng: " + homeRows, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showRowsChooserDialog();
+            }
+        }));
+
+        // 1c. Icon Size Row
+        int iconMode = sp.getInt("launcher_icon_size_mode", 2);
+        String iconDesc = "Lớn (56dp)";
+        if (iconMode == 0) iconDesc = "Nhỏ (40dp)";
+        else if (iconMode == 1) iconDesc = "Trung bình (48dp)";
+        else if (iconMode == 3) iconDesc = "Rất lớn (64dp)";
+        appList.addView(makeSettingOptionRow("Kích thước icon ứng dụng", iconDesc, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showIconSizeChooserDialog();
+            }
+        }));
+
+        // 2. Drawer Grid Layout Row
+        int drawerCols = sp.getInt("launcher_drawer_grid_columns", 4);
+        appList.addView(makeSettingOptionRow("Bố cục App Drawer", "Số cột ứng dụng: " + drawerCols, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showGridChooserDialog("Bố cục App Drawer", "launcher_drawer_grid_columns");
+            }
+        }));
+
+        // 3. Hide App Names on Home Row
+        boolean hideNames = sp.getBoolean("launcher_hide_app_names", true);
+        appList.addView(makeSettingToggleRow("Ẩn tên ứng dụng ở Home", "Ẩn tên dưới icon ngoài màn hình chính", hideNames, new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean checked) {
+                sp.edit().putBoolean("launcher_hide_app_names", checked).apply();
+            }
+        }));
+
+        // 4. Disable Home Button Long Press Row
+        boolean disableHome = sp.getBoolean("launcher_disable_home_assistant", true);
+        appList.addView(makeSettingToggleRow("Vô hiệu hóa giữ nút Home", "Tắt kích hoạt trợ lý ảo khi nhấn đè nút Home", disableHome, new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean checked) {
+                sp.edit().putBoolean("launcher_disable_home_assistant", checked).apply();
+                
+                try {
+                    if (checked) {
+                        android.provider.Settings.Secure.putInt(getContentResolver(), "assist_long_press_home_enabled", 0);
+                        android.provider.Settings.Global.putInt(getContentResolver(), "long_press_on_home_behavior", 0);
+                    } else {
+                        android.provider.Settings.Secure.putInt(getContentResolver(), "assist_long_press_home_enabled", 1);
+                        android.provider.Settings.Global.putInt(getContentResolver(), "long_press_on_home_behavior", 2);
+                    }
+                } catch (Throwable t) {
+                    // Ignore
+                }
+            }
+        }));
+    }
+
+    private View makeSettingOptionRow(String title, String subtitle, View.OnClickListener onClickListener) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(16), dp(12), dp(16), dp(12));
+        row.setBackgroundColor(Color.rgb(56, 56, 56));
+        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(76));
+        rowLp.setMargins(0, 0, 0, dp(6));
+        row.setLayoutParams(rowLp);
+
+        LinearLayout textWrap = new LinearLayout(this);
+        textWrap.setOrientation(LinearLayout.VERTICAL);
+        textWrap.setGravity(Gravity.CENTER_VERTICAL);
+        
+        TextView label = new TextView(this);
+        label.setSingleLine(true);
+        label.setText(title);
+        label.setTextColor(Color.rgb(224, 224, 224));
+        label.setTextSize(18);
+        
+        TextView sub = new TextView(this);
+        sub.setSingleLine(true);
+        sub.setText(subtitle);
+        sub.setTextColor(Color.rgb(180, 180, 180));
+        sub.setTextSize(13);
+        
+        textWrap.addView(label, new LinearLayout.LayoutParams(-1, -2));
+        textWrap.addView(sub, new LinearLayout.LayoutParams(-1, -2));
+        row.addView(textWrap, new LinearLayout.LayoutParams(0, -1, 1));
+
+        row.setOnClickListener(onClickListener);
+        return row;
+    }
+
+    private View makeSettingToggleRow(String title, String subtitle, boolean checked, CompoundButton.OnCheckedChangeListener onCheckedChangeListener) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(16), dp(12), dp(10), dp(12));
+        row.setBackgroundColor(Color.rgb(56, 56, 56));
+        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(76));
+        rowLp.setMargins(0, 0, 0, dp(6));
+        row.setLayoutParams(rowLp);
+
+        LinearLayout textWrap = new LinearLayout(this);
+        textWrap.setOrientation(LinearLayout.VERTICAL);
+        textWrap.setGravity(Gravity.CENTER_VERTICAL);
+        
+        TextView label = new TextView(this);
+        label.setSingleLine(true);
+        label.setText(title);
+        label.setTextColor(Color.rgb(224, 224, 224));
+        label.setTextSize(18);
+        
+        TextView sub = new TextView(this);
+        sub.setSingleLine(true);
+        sub.setText(subtitle);
+        sub.setTextColor(Color.rgb(180, 180, 180));
+        sub.setTextSize(13);
+        
+        textWrap.addView(label, new LinearLayout.LayoutParams(-1, -2));
+        textWrap.addView(sub, new LinearLayout.LayoutParams(-1, -2));
+        row.addView(textWrap, new LinearLayout.LayoutParams(0, -1, 1));
+
+        final Switch toggle = new Switch(this);
+        toggle.setChecked(checked);
+        toggle.setOnCheckedChangeListener(onCheckedChangeListener);
+        row.addView(toggle, new LinearLayout.LayoutParams(dp(70), -2));
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                toggle.toggle();
+            }
+        });
+        return row;
+    }
+
+    private void showGridChooserDialog(final String title, final String prefKey) {
+        final android.content.SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+        final String[] items = {"3 cột", "4 cột", "5 cột", "6 cột"};
+        final int[] values = {3, 4, 5, 6};
+        int currentVal = sp.getInt(prefKey, 4);
+        int selectedIndex = 1;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == currentVal) {
+                selectedIndex = i;
+                break;
+            }
+        }
+
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle(title);
+        builder.setSingleChoiceItems(items, selectedIndex, new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                sp.edit().putInt(prefKey, values[which]).apply();
+                dialog.dismiss();
+                renderLauncherSettings();
+            }
+        });
+        builder.show();
+    }
+
+    private void showRowsChooserDialog() {
+        final android.content.SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+        final String[] items = {"3 hàng", "4 hàng", "5 hàng", "6 hàng", "7 hàng", "8 hàng"};
+        final int[] values = {3, 4, 5, 6, 7, 8};
+        int currentVal = sp.getInt("launcher_home_grid_rows", 6);
+        int selectedIndex = 3;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == currentVal) {
+                selectedIndex = i;
+                break;
+            }
+        }
+
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Số hàng màn hình chính");
+        builder.setSingleChoiceItems(items, selectedIndex, new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                sp.edit().putInt("launcher_home_grid_rows", values[which]).apply();
+                dialog.dismiss();
+                renderLauncherSettings();
+            }
+        });
+        builder.show();
+    }
+
+    private void showIconSizeChooserDialog() {
+        final android.content.SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+        final String[] items = {"Nhỏ (40dp)", "Trung bình (48dp)", "Lớn (56dp)", "Rất lớn (64dp)"};
+        final int[] values = {0, 1, 2, 3};
+        int currentVal = sp.getInt("launcher_icon_size_mode", 2);
+        int selectedIndex = 2;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == currentVal) {
+                selectedIndex = i;
+                break;
+            }
+        }
+
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Kích thước icon ứng dụng");
+        builder.setSingleChoiceItems(items, selectedIndex, new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                sp.edit().putInt("launcher_icon_size_mode", values[which]).apply();
+                dialog.dismiss();
+                renderLauncherSettings();
+            }
+        });
+        builder.show();
     }
 
     private void toast(String message) {
