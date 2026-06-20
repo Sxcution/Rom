@@ -1,4 +1,10 @@
 {
+  "display_names": {
+    "settings_app": "Mon Space",
+    "home_launcher": "Mon Laucher",
+    "apk_file": "Mon.apk",
+    "priv_app_dir": "Mon"
+  },
   "classes": {
     "ParallelHomeActivity": "ink.kscope.parallelspace.ParallelHomeActivity",
     "BadgeIconRenderer": "ink.kscope.parallelspace.BadgeIconRenderer",
