@@ -81,7 +81,11 @@ public class ParallelHomeActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+        android.view.Window window = getWindow();
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        window.setStatusBarColor(android.graphics.Color.BLACK);
         sInstance = this;
         launcherApps = (LauncherApps) getSystemService(Context.LAUNCHER_APPS_SERVICE);
         parallelService = getService(SERVICE_NAME);
@@ -544,7 +548,7 @@ public class ParallelHomeActivity extends Activity {
                 List<LauncherActivityInfo> cloneList = launcherApps.getActivityList(null, userHandle);
                 for (LauncherActivityInfo info : cloneList) {
                     String pkg = info.getComponentName().getPackageName();
-                    if (!pkg.equals("com.tencent.mm") && !pkg.equals("com.google.android.apps.photos")) {
+                    if (!ClonePolicy.isVisibleInToggle(pkg, info.getApplicationInfo())) {
                         continue;
                     }
                     Drawable badgedIcon = BadgeIconRenderer.renderBadgedIcon(this, info.getIcon(0), spaceNumber);
@@ -954,6 +958,127 @@ public class ParallelHomeActivity extends Activity {
         }
     }
 
+    private final class IconTouchHandler implements View.OnTouchListener {
+        private final AppItem item;
+        private final boolean isHome;
+        private final int position;
+        private float downRawX;
+        private float downRawY;
+        private boolean longPressReady;
+        private boolean dragStarted;
+        private Runnable longPressRunnable;
+
+        public IconTouchHandler(AppItem item, boolean isHome, int position) {
+            this.item = item;
+            this.isHome = isHome;
+            this.position = position;
+        }
+
+        @Override
+        public boolean onTouch(final View v, android.view.MotionEvent ev) {
+            switch (ev.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    downRawX = ev.getRawX();
+                    downRawY = ev.getRawY();
+                    longPressReady = false;
+                    dragStarted = false;
+                    v.animate().cancel();
+                    v.setAlpha(1.0f);
+                    v.setPressed(true);
+                    
+                    // Xiaomi style: scale down gently on touch
+                    v.animate().scaleX(0.92f).scaleY(0.92f).setDuration(150)
+                            .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+
+                    longPressRunnable = new Runnable() {
+                        @Override
+                        public void run() {
+                            longPressReady = true;
+                            v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                            // Xiaomi style: bounce back up when long press triggers
+                            v.animate().cancel();
+                            v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(300)
+                                    .setInterpolator(new android.view.animation.OvershootInterpolator(2.0f)).start();
+                            if (v.getParent() != null) {
+                                v.getParent().requestDisallowInterceptTouchEvent(true);
+                            }
+                            showPopupMenu(v, item, isHome);
+                        }
+                    };
+                    v.postDelayed(longPressRunnable, android.view.ViewConfiguration.getLongPressTimeout());
+                    return true;
+
+                case android.view.MotionEvent.ACTION_MOVE:
+                    float dx = ev.getRawX() - downRawX;
+                    float dy = ev.getRawY() - downRawY;
+                    float distSq = dx * dx + dy * dy;
+                    int slop = android.view.ViewConfiguration.get(ParallelHomeActivity.this).getScaledTouchSlop();
+                    int dragThresholdSq = (int)(slop * 1.5f) * (int)(slop * 1.5f);
+
+                    if (distSq > dragThresholdSq) {
+                        if (longPressRunnable != null) {
+                            v.removeCallbacks(longPressRunnable);
+                        }
+                        if (longPressReady && !dragStarted) {
+                            dragStarted = true;
+                            v.setPressed(false);
+                            v.animate().cancel();
+                            v.setAlpha(1.0f);
+                            v.setScaleX(1.0f);
+                            v.setScaleY(1.0f);
+                            
+                            if (activePopup != null) {
+                                activePopup.dismiss();
+                            }
+
+                            if (isHome) {
+                                beginHomeIconDrag(v, position);
+                            } else {
+                                beginDrawerIconDrag(v, item);
+                            }
+                        }
+                    }
+                    return true;
+
+                case android.view.MotionEvent.ACTION_UP:
+                    if (longPressRunnable != null) {
+                        v.removeCallbacks(longPressRunnable);
+                    }
+                    // Always animate back to 1.0f on release
+                    v.animate().cancel();
+                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150)
+                            .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+                            
+                    if (longPressReady && !dragStarted) {
+                        v.setPressed(false);
+                        v.setAlpha(1.0f);
+                        // Menu already shown by longPressRunnable
+                    } else if (!longPressReady && !dragStarted) {
+                        float dxUp = ev.getRawX() - downRawX;
+                        float dyUp = ev.getRawY() - downRawY;
+                        int slopUp = android.view.ViewConfiguration.get(ParallelHomeActivity.this).getScaledTouchSlop();
+                        if (dxUp * dxUp + dyUp * dyUp <= slopUp * slopUp) {
+                            launchAppItem(item);
+                        }
+                    }
+                    v.setPressed(false);
+                    return true;
+
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    if (longPressRunnable != null) {
+                        v.removeCallbacks(longPressRunnable);
+                    }
+                    v.animate().cancel();
+                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150)
+                            .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+                    v.setAlpha(1.0f);
+                    v.setPressed(false);
+                    return true;
+            }
+            return false;
+        }
+    }
+
     private class AppAdapter extends BaseAdapter {
         private final List<AppItem> list;
         private final boolean isHome;
@@ -1123,6 +1248,7 @@ public class ParallelHomeActivity extends Activity {
                 textView.setVisibility(View.INVISIBLE);
                 layout.setOnClickListener(null);
                 layout.setOnLongClickListener(null);
+                layout.setOnTouchListener(null);
                 return layout;
             }
             layout.setAlpha(1.0f);
@@ -1130,40 +1256,14 @@ public class ParallelHomeActivity extends Activity {
             if (item.isEmpty) {
                 layout.setOnClickListener(null);
                 layout.setOnLongClickListener(null);
-                if (isHome && isDraggingApp) {
-                    android.graphics.drawable.GradientDrawable dot = new android.graphics.drawable.GradientDrawable();
-                    dot.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                    dot.setCornerRadius(dp(8));
-                    dot.setStroke(dp(1), Color.argb(80, 255, 255, 255), dp(4), dp(4));
-                    layout.setBackground(dot);
-                } else {
-                    layout.setBackground(null);
-                }
+                layout.setOnTouchListener(null);
+                layout.setBackground(null);
                 iconContainer.setVisibility(View.INVISIBLE);
                 textView.setVisibility(View.INVISIBLE);
             } else {
-                layout.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        launchAppItem(item);
-                    }
-                });
-                layout.setOnLongClickListener(new View.OnLongClickListener() {
-                    @Override
-                    public boolean onLongClick(View v) {
-                        Object tag = v.getTag(R.id.tag_position);
-                        if (!(tag instanceof Integer)) {
-                            return true;
-                        }
-                        int position = (Integer) tag;
-                        if (isHome) {
-                            beginHomeIconDrag(v, position);
-                        } else {
-                            beginDrawerIconDrag(v, item);
-                        }
-                        return true;
-                    }
-                });
+                layout.setOnClickListener(null);
+                layout.setOnLongClickListener(null);
+                layout.setOnTouchListener(new IconTouchHandler(item, isHome, pos));
                 layout.setBackground(null);
                 iconContainer.setVisibility(View.VISIBLE);
                 iconView.setVisibility(View.VISIBLE);
@@ -1202,7 +1302,7 @@ public class ParallelHomeActivity extends Activity {
         LinearLayout popupLayout = new LinearLayout(this);
         popupLayout.setOrientation(LinearLayout.HORIZONTAL);
         popupLayout.setGravity(Gravity.CENTER);
-        popupLayout.setPadding(dp(8), dp(4), dp(8), dp(4));
+        popupLayout.setPadding(dp(6), 0, dp(6), 0);
 
         android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
         gd.setColor(Color.parseColor("#222222"));
@@ -1296,15 +1396,15 @@ public class ParallelHomeActivity extends Activity {
         activePopup.showAtLocation(
             anchorView,
             Gravity.NO_GRAVITY,
-            location[0] + (anchorView.getWidth() / 2) - dp(80),
-            location[1] - dp(64)
+            location[0] + (anchorView.getWidth() / 2) - dp(60),
+            location[1] - dp(48)
         );
     }
 
     private ImageView createPopupButton(int drawableId, View.OnClickListener listener) {
         ImageView btn = new ImageView(this);
         btn.setImageResource(drawableId);
-        btn.setPadding(dp(8), dp(8), dp(8), dp(8));
+        btn.setPadding(dp(6), dp(6), dp(6), dp(6));
         btn.setOnClickListener(listener);
         
         android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
@@ -1312,9 +1412,10 @@ public class ParallelHomeActivity extends Activity {
         bg.setColor(Color.TRANSPARENT);
         btn.setBackground(bg);
         
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(44), dp(44));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(36), dp(36));
         lp.setMargins(dp(2), 0, dp(2), 0);
         btn.setLayoutParams(lp);
+        
         return btn;
     }
 

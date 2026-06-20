@@ -72,6 +72,10 @@ public class ParallelSpaceActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        android.view.Window window = getWindow();
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        window.setStatusBarColor(Color.BLACK);
         packageManager = getPackageManager();
         setContentView(buildLayout());
         reloadAll();
@@ -296,11 +300,33 @@ public class ParallelSpaceActivity extends Activity {
             toggle.setChecked(isEnabledForUser(app.packageName, userId));
             toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 @Override
-                public void onCheckedChanged(CompoundButton button, boolean checked) {
+                public void onCheckedChanged(final CompoundButton button, final boolean checked) {
                     if (rendering) {
                         return;
                     }
-                    setPackageEnabled(app.packageName, userId, checked, button);
+                    if (!checked) {
+                        new android.app.AlertDialog.Builder(ParallelSpaceActivity.this)
+                            .setTitle("Cảnh báo xóa")
+                            .setMessage("Bạn có chắc chắn muốn xóa " + app.label + " khỏi không gian này không? Mọi dữ liệu của ứng dụng trong không gian này sẽ bị mất.")
+                            .setPositiveButton("Xóa", new android.content.DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(android.content.DialogInterface dialog, int which) {
+                                    setPackageEnabled(app.packageName, userId, false, button);
+                                }
+                            })
+                            .setNegativeButton("Hủy", new android.content.DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(android.content.DialogInterface dialog, int which) {
+                                    rendering = true;
+                                    button.setChecked(true);
+                                    rendering = false;
+                                }
+                            })
+                            .setCancelable(false)
+                            .show();
+                    } else {
+                        setPackageEnabled(app.packageName, userId, true, button);
+                    }
                 }
             });
         }
@@ -427,7 +453,7 @@ public class ParallelSpaceActivity extends Activity {
                 continue;
             }
             String pkg = ri.activityInfo.packageName;
-            if (!ClonePolicy.isVisibleInToggle(pkg)) {
+            if (!ClonePolicy.isVisibleInToggle(pkg, ri.activityInfo.applicationInfo)) {
                 continue;
             }
             CharSequence labelSeq = ri.loadLabel(packageManager);
@@ -451,9 +477,10 @@ public class ParallelSpaceActivity extends Activity {
             }
             private int getWeight(String pkg) {
                 if ("com.tencent.mm".equals(pkg)) return 1;
-                if ("com.android.chrome".equals(pkg)) return 2;
-                if ("com.google.android.apps.photos".equals(pkg)) return 3;
-                return 4;
+                if ("jp.naver.line.android".equals(pkg)) return 2;
+                if ("com.android.chrome".equals(pkg)) return 3;
+                if ("com.google.android.apps.photos".equals(pkg)) return 4;
+                return 5;
             }
         });
         return out;
@@ -645,7 +672,6 @@ public class ParallelSpaceActivity extends Activity {
 
     private void renderLauncherSettings() {
         appList.removeAllViews();
-        titleView.setText("Launcher");
 
         final android.content.SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
 

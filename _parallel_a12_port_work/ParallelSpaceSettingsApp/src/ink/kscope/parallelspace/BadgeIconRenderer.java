@@ -42,13 +42,16 @@ public class BadgeIconRenderer {
                 badgeColor = Color.rgb(2, 136, 209); // Space 1 = Blue (#0288D1)
                 break;
             case 2:
-                badgeColor = Color.rgb(76, 175, 80); // Space 2 = Green (#4CAF50)
+                badgeColor = Color.parseColor("#80CBC4"); // Space 2 = Cyan/Teal (like toggle switch)
                 break;
             case 3:
-                badgeColor = Color.rgb(230, 81, 0);  // Space 3 = Orange (#E65100)
+                badgeColor = Color.parseColor("#FFB74D"); // Space 3 = Light Orange
+                break;
+            case 4:
+                badgeColor = Color.parseColor("#FDD835"); // Space 4 = Normal Yellow
                 break;
             default:
-                badgeColor = Color.rgb(220, 38, 38); // Space 4+ = Red (#DC2626)
+                badgeColor = Color.rgb(220, 38, 38); // Space 5+ = Red (#DC2626)
                 break;
         }
 

@@ -9,9 +9,10 @@ public class ClonePolicy {
     public static final Set<String> BLOCKED_TRASH_PACKAGES = new HashSet<>();
 
     static {
-        // Only WeChat and Photos are allowed to be toggled/cloned
+        // Only WeChat, Photos, and Line are allowed to be toggled/cloned
         VISIBLE_TOGGLE_PACKAGES.add("com.tencent.mm");
         VISIBLE_TOGGLE_PACKAGES.add("com.google.android.apps.photos");
+        VISIBLE_TOGGLE_PACKAGES.add("jp.naver.line.android");
 
         // Photos is auto-cloned by default on Space creation
         DEFAULT_AUTO_CLONE_PACKAGES.add("com.google.android.apps.photos");
@@ -37,8 +38,17 @@ public class ClonePolicy {
         BLOCKED_TRASH_PACKAGES.add("com.google.android.apps.messaging");
     }
 
-    public static boolean isVisibleInToggle(String pkg) {
-        return VISIBLE_TOGGLE_PACKAGES.contains(pkg);
+    public static boolean isVisibleInToggle(String pkg, android.content.pm.ApplicationInfo appInfo) {
+        if (VISIBLE_TOGGLE_PACKAGES.contains(pkg)) {
+            return true;
+        }
+        if (appInfo != null) {
+            boolean isSystem = (appInfo.flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0;
+            if (!isSystem && !isBlockedTrashApp(pkg)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean isDefaultAutoClone(String pkg) {
