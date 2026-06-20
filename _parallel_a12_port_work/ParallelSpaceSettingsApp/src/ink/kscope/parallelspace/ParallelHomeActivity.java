@@ -875,9 +875,7 @@ public class ParallelHomeActivity extends Activity {
     }
 
     private void refreshNotificationBadgesInternal() {
-        if (homeAdapter != null) {
-            homeAdapter.notifyDataSetChanged();
-        }
+        notifyHomeDataSetChanged();
         if (drawerAdapter != null) {
             drawerAdapter.notifyDataSetChanged();
         }
@@ -1629,18 +1627,19 @@ public class ParallelHomeActivity extends Activity {
 
     String getStableAnimationKey(AppItem item, int index) {
         if (item == null) {
-            return "empty:" + index;
+            return "null:" + index;
         }
         if (isPlaceholder(item)) {
             return "placeholder";
         }
         if (item.isEmpty) {
-            return "empty:" + index;
+            // Empty slots: use position-based key so they don't animate during reorder
+            return "slot:" + index;
         }
         if (item.componentName != null) {
             return item.componentName.getPackageName() + "/" + item.componentName.getClassName() + "/" + item.spaceNumber;
         }
-        return "empty:" + index;
+        return "unknown:" + index;
     }
 
     private java.util.Map<String, android.graphics.Rect> captureVisibleItemRects(GridView grid) {
@@ -1728,10 +1727,26 @@ public class ParallelHomeActivity extends Activity {
             homeAdapter = new AppAdapter(pinnedAppList, true);
         }
         if (homeCellLayout != null) {
-            SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
-            int homeCols = sp.getInt("launcher_home_grid_columns", 4);
-            int homeRows = sp.getInt("launcher_home_grid_rows", 6);
-            homeCellLayout.bindApps(pinnedAppList, homeCols, homeRows, isDraggingApp, this);
+            if (homeCellLayout.getWidth() > 0 && homeCellLayout.getHeight() > 0) {
+                SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+                int homeCols = sp.getInt("launcher_home_grid_columns", 4);
+                int homeRows = sp.getInt("launcher_home_grid_rows", 6);
+                homeCellLayout.bindApps(pinnedAppList, homeCols, homeRows, isDraggingApp, this);
+            } else {
+                // Layout not ready yet, defer until after first layout pass
+                homeCellLayout.getViewTreeObserver().addOnGlobalLayoutListener(
+                    new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+                        @Override
+                        public void onGlobalLayout() {
+                            homeCellLayout.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                            SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+                            int homeCols = sp.getInt("launcher_home_grid_columns", 4);
+                            int homeRows = sp.getInt("launcher_home_grid_rows", 6);
+                            homeCellLayout.bindApps(pinnedAppList, homeCols, homeRows, isDraggingApp, ParallelHomeActivity.this);
+                        }
+                    }
+                );
+            }
         }
     }
 }
