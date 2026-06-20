@@ -24,3 +24,23 @@ _device_backups*/
 **/debug.keystore
 *.idsig
 
+# Intermediate audit/analysis/decompiled folders (contains 100k+ smali files)
+_analysis_services/
+_parallel_a12_audit/
+_parallel_a12_port_work/ToggleProbeApp/
+_parallel_a12_port_work/decompiled_Settings_A12/
+_parallel_a12_port_work/decompiled_framework_parallel_20260618/
+_parallel_a12_port_work/decompiled_service_appsearch_20260620/
+_parallel_a12_port_work/decompiled_services_gps_recents_20260618/
+_parallel_a12_port_work/mime_extract_a12_20260618/
+_parallel_a12_port_work/mime_stage_framework/
+_parallel_a12_port_work/patched_outputs/
+_parallel_a12_port_work/verify_framework_a12_parallel_20260618/
+_parallel_a12_port_work/verify_services_a12_gps_recents_20260618/
+_parallel_a12_port_work/system_assets/
+_parallel_a12_port_work/*.png
+print_all_cmds.py
+scratch_find_build.py
+*.list
+
+

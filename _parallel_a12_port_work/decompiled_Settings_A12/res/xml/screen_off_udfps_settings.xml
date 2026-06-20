@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen android:title="@string/ambient_display_screen_off_udfps_title"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <SwitchPreference android:title="@string/ambient_display_screen_off_udfps_title" android:key="gesture_screen_off_udfps" android:summary="@string/ambient_display_screen_off_udfps_summary" app:allowDividerAbove="true" app:controller="com.android.settings.gestures.ScreenOffUdfpsPreferenceController" app:keywords="@string/keywords_gesture" />
+</PreferenceScreen>

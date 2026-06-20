@@ -1,0 +1,14 @@
+version: 2.12.0
+apkFileName: framework-res.apk
+sdkInfo:
+  minSdkVersion: 32
+  targetSdkVersion: 32
+packageInfo:
+  forcedPackageId: 1
+versionInfo:
+  versionCode: 32
+  versionName: 12
+doNotCompress:
+- arsc
+- ogg
+- png

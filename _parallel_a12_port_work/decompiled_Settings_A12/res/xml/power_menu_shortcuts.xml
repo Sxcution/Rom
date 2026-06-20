@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen android:title="@string/power_menu_shortcuts_title" android:key="power_menu_shortcuts"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="@string/power_menu_shortcuts_title" android:key="power_menu_items">
+        <CheckBoxPreference android:title="@string/power_menu_screenshot_title" android:key="screenshot" android:summary="@string/power_menu_screenshot_summary" android:defaultValue="false" />
+        <CheckBoxPreference android:title="@string/power_menu_airplane_title" android:key="airplane" android:defaultValue="false" />
+        <CheckBoxPreference android:title="@string/power_menu_users_title" android:key="users" android:defaultValue="false" />
+        <CheckBoxPreference android:title="@string/power_menu_emergency_title" android:key="emergency" android:defaultValue="false" />
+        <CheckBoxPreference android:enabled="false" android:title="@string/power_menu_devicecontrols_title" android:key="devicecontrols" android:defaultValue="false" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/advanced_apps" android:key="advanced">
+        <com.android.settings.custom.preference.SecureSettingSwitchPreference android:title="@string/advanced_reboot_title" android:key="advanced_reboot" android:summary="@string/advanced_reboot_summary" android:defaultValue="false" />
+    </PreferenceCategory>
+</PreferenceScreen>

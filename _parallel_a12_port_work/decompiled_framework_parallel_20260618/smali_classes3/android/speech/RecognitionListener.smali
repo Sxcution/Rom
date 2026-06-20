@@ -1,0 +1,32 @@
+.class public interface abstract Landroid/speech/RecognitionListener;
+.super Ljava/lang/Object;
+.source "RecognitionListener.java"
+
+
+# virtual methods
+.method public abstract whitelist onBeginningOfSpeech()V
+.end method
+
+.method public abstract whitelist onBufferReceived([B)V
+.end method
+
+.method public abstract whitelist onEndOfSpeech()V
+.end method
+
+.method public abstract whitelist onError(I)V
+.end method
+
+.method public abstract whitelist onEvent(ILandroid/os/Bundle;)V
+.end method
+
+.method public abstract whitelist onPartialResults(Landroid/os/Bundle;)V
+.end method
+
+.method public abstract whitelist onReadyForSpeech(Landroid/os/Bundle;)V
+.end method
+
+.method public abstract whitelist onResults(Landroid/os/Bundle;)V
+.end method
+
+.method public abstract whitelist onRmsChanged(F)V
+.end method

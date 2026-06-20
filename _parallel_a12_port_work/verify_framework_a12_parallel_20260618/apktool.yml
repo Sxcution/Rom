@@ -1,0 +1,7 @@
+version: 2.12.0
+apkFileName: framework.jar
+sdkInfo:
+  minSdkVersion: 29
+doNotCompress:
+- dex
+- res/vendor.mime.types

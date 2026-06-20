@@ -1,0 +1,20 @@
+version: 2.12.0
+apkFileName: Settings.apk
+usesFramework:
+  ids:
+  - 1
+sdkInfo:
+  minSdkVersion: 32
+  targetSdkVersion: 32
+packageInfo:
+  forcedPackageId: 127
+versionInfo:
+  versionCode: 32
+  versionName: 12
+doNotCompress:
+- arsc
+- dex
+- jpg
+- mp4
+- ogg
+- png

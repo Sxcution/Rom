@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen android:title="@string/unlock_set_unlock_launch_picker_title" android:key="security_settings_password_sub_screen" settings:searchable="false"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:settings="http://schemas.android.com/apk/res-auto">
+    <SwitchPreference android:title="@string/lockpattern_settings_enable_visible_pattern_title" android:key="visiblepattern" />
+    <SwitchPreference android:title="@string/lockpattern_settings_enable_error_path_title" android:key="visible_error_pattern" />
+    <SwitchPreference android:title="@string/lockpattern_settings_enable_dots_title" android:key="visibledots" />
+    <com.android.settings.display.TimeoutListPreference android:entries="@array/lock_after_timeout_entries" android:title="@string/lock_after_timeout" android:key="lock_after_timeout" android:summary="@string/summary_placeholder" android:entryValues="@array/lock_after_timeout_values" />
+    <SwitchPreference android:title="@string/lockpattern_settings_enable_power_button_instantly_locks" android:key="power_button_instantly_locks" />
+    <SwitchPreference android:title="@string/fingerprint_wake_unlock_title" android:key="fingerprint_wake_unlock" android:summaryOn="@string/fingerprint_wake_unlock_touch" android:summaryOff="@string/fingerprint_wake_unlock_press" />
+    <SwitchPreference android:title="@string/unlock_scramble_pin_layout_title" android:key="lockscreen_scramble_pin_layout" android:summary="@string/unlock_scramble_pin_layout_summary" />
+</PreferenceScreen>

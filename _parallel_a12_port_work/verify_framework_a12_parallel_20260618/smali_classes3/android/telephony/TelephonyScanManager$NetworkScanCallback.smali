@@ -1,0 +1,56 @@
+.class public abstract Landroid/telephony/TelephonyScanManager$NetworkScanCallback;
+.super Ljava/lang/Object;
+.source "TelephonyScanManager.java"
+
+
+# annotations
+.annotation system Ldalvik/annotation/EnclosingClass;
+    value = Landroid/telephony/TelephonyScanManager;
+.end annotation
+
+.annotation system Ldalvik/annotation/InnerClass;
+    accessFlags = 0x409
+    name = "NetworkScanCallback"
+.end annotation
+
+
+# direct methods
+.method public constructor whitelist <init>()V
+    .locals 0
+
+    .line 73
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+
+    return-void
+.end method
+
+
+# virtual methods
+.method public whitelist onComplete()V
+    .locals 0
+
+    .line 83
+    return-void
+.end method
+
+.method public whitelist onError(I)V
+    .locals 0
+
+    .line 93
+    return-void
+.end method
+
+.method public whitelist onResults(Ljava/util/List;)V
+    .locals 0
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "(",
+            "Ljava/util/List<",
+            "Landroid/telephony/CellInfo;",
+            ">;)V"
+        }
+    .end annotation
+
+    .line 75
+    return-void
+.end method

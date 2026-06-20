@@ -1,0 +1,45 @@
+.class Lcom/android/internal/view/RotationPolicy$RotationPolicyListener$1;
+.super Landroid/database/ContentObserver;
+.source "RotationPolicy.java"
+
+
+# annotations
+.annotation system Ldalvik/annotation/EnclosingClass;
+    value = Lcom/android/internal/view/RotationPolicy$RotationPolicyListener;
+.end annotation
+
+.annotation system Ldalvik/annotation/InnerClass;
+    accessFlags = 0x0
+    name = null
+.end annotation
+
+
+# instance fields
+.field final synthetic blacklist this$0:Lcom/android/internal/view/RotationPolicy$RotationPolicyListener;
+
+
+# direct methods
+.method constructor blacklist <init>(Lcom/android/internal/view/RotationPolicy$RotationPolicyListener;Landroid/os/Handler;)V
+    .locals 0
+
+    .line 277
+    iput-object p1, p0, Lcom/android/internal/view/RotationPolicy$RotationPolicyListener$1;->this$0:Lcom/android/internal/view/RotationPolicy$RotationPolicyListener;
+
+    invoke-direct {p0, p2}, Landroid/database/ContentObserver;-><init>(Landroid/os/Handler;)V
+
+    return-void
+.end method
+
+
+# virtual methods
+.method public whitelist onChange(ZLandroid/net/Uri;)V
+    .locals 0
+
+    .line 280
+    iget-object p1, p0, Lcom/android/internal/view/RotationPolicy$RotationPolicyListener$1;->this$0:Lcom/android/internal/view/RotationPolicy$RotationPolicyListener;
+
+    invoke-virtual {p1}, Lcom/android/internal/view/RotationPolicy$RotationPolicyListener;->onChange()V
+
+    .line 281
+    return-void
+.end method

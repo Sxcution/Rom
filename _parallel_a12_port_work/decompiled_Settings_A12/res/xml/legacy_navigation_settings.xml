@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen android:title="@string/navigation_bar_title" android:key="gesture_navigation_settings_page"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:settings="http://schemas.android.com/apk/res-auto">
+    <com.android.settings.custom.preference.SystemSettingSwitchPreference android:title="@string/navigation_bar_compact_layout_title" android:key="navigation_bar_compact_layout" android:summary="@string/navigation_bar_compact_layout_summary" android:defaultValue="false" />
+    <com.android.settings.custom.preference.SystemSettingSwitchPreference android:title="@string/navigation_bar_arrow_keys_title" android:key="navigation_bar_menu_arrow_keys" android:summary="@string/navigation_bar_arrow_keys_summary" android:defaultValue="false" />
+    <com.android.settings.custom.preference.SecureSettingSwitchPreference android:title="@string/nav_bar_layout_inverse_title" android:key="sysui_nav_bar_inverse" android:summary="@string/nav_bar_layout_inverse_summary" android:defaultValue="false" />
+</PreferenceScreen>

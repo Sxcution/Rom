@@ -1,0 +1,100 @@
+.class public final Landroid/telephony/data/TrafficDescriptor$Builder;
+.super Ljava/lang/Object;
+.source "TrafficDescriptor.java"
+
+
+# annotations
+.annotation system Ldalvik/annotation/EnclosingClass;
+    value = Landroid/telephony/data/TrafficDescriptor;
+.end annotation
+
+.annotation system Ldalvik/annotation/InnerClass;
+    accessFlags = 0x19
+    name = "Builder"
+.end annotation
+
+
+# instance fields
+.field private blacklist mDnn:Ljava/lang/String;
+
+.field private blacklist mOsAppId:[B
+
+
+# direct methods
+.method public constructor whitelist <init>()V
+    .locals 1
+
+    .line 136
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+
+    .line 130
+    const/4 v0, 0x0
+
+    iput-object v0, p0, Landroid/telephony/data/TrafficDescriptor$Builder;->mDnn:Ljava/lang/String;
+
+    .line 131
+    iput-object v0, p0, Landroid/telephony/data/TrafficDescriptor$Builder;->mOsAppId:[B
+
+    .line 137
+    return-void
+.end method
+
+
+# virtual methods
+.method public whitelist build()Landroid/telephony/data/TrafficDescriptor;
+    .locals 3
+
+    .line 170
+    iget-object v0, p0, Landroid/telephony/data/TrafficDescriptor$Builder;->mDnn:Ljava/lang/String;
+
+    if-nez v0, :cond_1
+
+    iget-object v0, p0, Landroid/telephony/data/TrafficDescriptor$Builder;->mOsAppId:[B
+
+    if-eqz v0, :cond_0
+
+    goto :goto_0
+
+    .line 171
+    :cond_0
+    new-instance v0, Ljava/lang/IllegalArgumentException;
+
+    const-string v1, "DNN and OS App ID are null"
+
+    invoke-direct {v0, v1}, Ljava/lang/IllegalArgumentException;-><init>(Ljava/lang/String;)V
+
+    throw v0
+
+    .line 173
+    :cond_1
+    :goto_0
+    new-instance v0, Landroid/telephony/data/TrafficDescriptor;
+
+    iget-object v1, p0, Landroid/telephony/data/TrafficDescriptor$Builder;->mDnn:Ljava/lang/String;
+
+    iget-object v2, p0, Landroid/telephony/data/TrafficDescriptor$Builder;->mOsAppId:[B
+
+    invoke-direct {v0, v1, v2}, Landroid/telephony/data/TrafficDescriptor;-><init>(Ljava/lang/String;[B)V
+
+    return-object v0
+.end method
+
+.method public whitelist setDataNetworkName(Ljava/lang/String;)Landroid/telephony/data/TrafficDescriptor$Builder;
+    .locals 0
+
+    .line 146
+    iput-object p1, p0, Landroid/telephony/data/TrafficDescriptor$Builder;->mDnn:Ljava/lang/String;
+
+    .line 147
+    return-object p0
+.end method
+
+.method public whitelist setOsAppId([B)Landroid/telephony/data/TrafficDescriptor$Builder;
+    .locals 0
+
+    .line 157
+    iput-object p1, p0, Landroid/telephony/data/TrafficDescriptor$Builder;->mOsAppId:[B
+
+    .line 158
+    return-object p0
+.end method

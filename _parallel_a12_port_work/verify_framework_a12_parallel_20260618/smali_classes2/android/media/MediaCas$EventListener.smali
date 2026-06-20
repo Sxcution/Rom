@@ -1,0 +1,61 @@
+.class public interface abstract Landroid/media/MediaCas$EventListener;
+.super Ljava/lang/Object;
+.source "MediaCas.java"
+
+
+# annotations
+.annotation system Ldalvik/annotation/EnclosingClass;
+    value = Landroid/media/MediaCas;
+.end annotation
+
+.annotation system Ldalvik/annotation/InnerClass;
+    accessFlags = 0x609
+    name = "EventListener"
+.end annotation
+
+
+# virtual methods
+.method public abstract whitelist onEvent(Landroid/media/MediaCas;II[B)V
+.end method
+
+.method public whitelist onPluginStatusUpdate(Landroid/media/MediaCas;II)V
+    .locals 0
+
+    .line 832
+    const-string p1, "MediaCas"
+
+    const-string p2, "Received MediaCas Plugin Status event"
+
+    invoke-static {p1, p2}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+
+    .line 833
+    return-void
+.end method
+
+.method public whitelist onResourceLost(Landroid/media/MediaCas;)V
+    .locals 1
+
+    .line 841
+    const-string p1, "MediaCas"
+
+    const-string v0, "Received MediaCas Resource Reclaim event"
+
+    invoke-static {p1, v0}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+
+    .line 842
+    return-void
+.end method
+
+.method public whitelist onSessionEvent(Landroid/media/MediaCas;Landroid/media/MediaCas$Session;II[B)V
+    .locals 0
+
+    .line 820
+    const-string p1, "MediaCas"
+
+    const-string p2, "Received MediaCas Session event"
+
+    invoke-static {p1, p2}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+
+    .line 821
+    return-void
+.end method

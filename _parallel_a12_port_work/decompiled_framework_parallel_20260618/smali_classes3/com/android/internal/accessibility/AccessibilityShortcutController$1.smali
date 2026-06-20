@@ -1,0 +1,63 @@
+.class Lcom/android/internal/accessibility/AccessibilityShortcutController$1;
+.super Landroid/database/ContentObserver;
+.source "AccessibilityShortcutController.java"
+
+
+# annotations
+.annotation system Ldalvik/annotation/EnclosingMethod;
+    value = Lcom/android/internal/accessibility/AccessibilityShortcutController;-><init>(Landroid/content/Context;Landroid/os/Handler;I)V
+.end annotation
+
+.annotation system Ldalvik/annotation/InnerClass;
+    accessFlags = 0x0
+    name = null
+.end annotation
+
+
+# instance fields
+.field final synthetic blacklist this$0:Lcom/android/internal/accessibility/AccessibilityShortcutController;
+
+
+# direct methods
+.method constructor blacklist <init>(Lcom/android/internal/accessibility/AccessibilityShortcutController;Landroid/os/Handler;)V
+    .locals 0
+
+    .line 160
+    iput-object p1, p0, Lcom/android/internal/accessibility/AccessibilityShortcutController$1;->this$0:Lcom/android/internal/accessibility/AccessibilityShortcutController;
+
+    invoke-direct {p0, p2}, Landroid/database/ContentObserver;-><init>(Landroid/os/Handler;)V
+
+    return-void
+.end method
+
+
+# virtual methods
+.method public blacklist onChange(ZLjava/util/Collection;II)V
+    .locals 0
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "(Z",
+            "Ljava/util/Collection<",
+            "Landroid/net/Uri;",
+            ">;II)V"
+        }
+    .end annotation
+
+    .line 163
+    iget-object p1, p0, Lcom/android/internal/accessibility/AccessibilityShortcutController$1;->this$0:Lcom/android/internal/accessibility/AccessibilityShortcutController;
+
+    invoke-static {p1}, Lcom/android/internal/accessibility/AccessibilityShortcutController;->access$000(Lcom/android/internal/accessibility/AccessibilityShortcutController;)I
+
+    move-result p1
+
+    if-ne p4, p1, :cond_0
+
+    .line 164
+    iget-object p1, p0, Lcom/android/internal/accessibility/AccessibilityShortcutController$1;->this$0:Lcom/android/internal/accessibility/AccessibilityShortcutController;
+
+    invoke-virtual {p1}, Lcom/android/internal/accessibility/AccessibilityShortcutController;->onSettingsChanged()V
+
+    .line 166
+    :cond_0
+    return-void
+.end method

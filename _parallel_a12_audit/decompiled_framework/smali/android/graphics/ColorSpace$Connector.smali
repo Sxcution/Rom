@@ -1,0 +1,433 @@
+.class public Landroid/graphics/ColorSpace$Connector;
+.super Ljava/lang/Object;
+.source "ColorSpace.java"
+
+
+# annotations
+.annotation system Ldalvik/annotation/EnclosingClass;
+    value = Landroid/graphics/ColorSpace;
+.end annotation
+
+.annotation system Ldalvik/annotation/InnerClass;
+    accessFlags = 0x9
+    name = "Connector"
+.end annotation
+
+.annotation system Ldalvik/annotation/MemberClasses;
+    value = {
+        Landroid/graphics/ColorSpace$Connector$Rgb;
+    }
+.end annotation
+
+
+# instance fields
+.field private final greylist-max-o mDestination:Landroid/graphics/ColorSpace;
+
+.field private final greylist-max-o mIntent:Landroid/graphics/ColorSpace$RenderIntent;
+
+.field private final greylist-max-o mSource:Landroid/graphics/ColorSpace;
+
+.field private final greylist-max-o mTransform:[F
+
+.field private final greylist-max-o mTransformDestination:Landroid/graphics/ColorSpace;
+
+.field private final greylist-max-o mTransformSource:Landroid/graphics/ColorSpace;
+
+
+# direct methods
+.method constructor greylist-max-o <init>(Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace$RenderIntent;)V
+    .locals 8
+
+    .line 3611
+    nop
+
+    .line 3612
+    invoke-virtual {p1}, Landroid/graphics/ColorSpace;->getModel()Landroid/graphics/ColorSpace$Model;
+
+    move-result-object v0
+
+    sget-object v1, Landroid/graphics/ColorSpace$Model;->RGB:Landroid/graphics/ColorSpace$Model;
+
+    if-ne v0, v1, :cond_0
+
+    invoke-static {}, Landroid/graphics/ColorSpace;->access$900()[F
+
+    move-result-object v0
+
+    invoke-static {p1, v0}, Landroid/graphics/ColorSpace;->adapt(Landroid/graphics/ColorSpace;[F)Landroid/graphics/ColorSpace;
+
+    move-result-object v0
+
+    move-object v4, v0
+
+    goto :goto_0
+
+    :cond_0
+    move-object v4, p1
+
+    .line 3613
+    :goto_0
+    invoke-virtual {p2}, Landroid/graphics/ColorSpace;->getModel()Landroid/graphics/ColorSpace$Model;
+
+    move-result-object v0
+
+    sget-object v1, Landroid/graphics/ColorSpace$Model;->RGB:Landroid/graphics/ColorSpace$Model;
+
+    if-ne v0, v1, :cond_1
+
+    .line 3614
+    invoke-static {}, Landroid/graphics/ColorSpace;->access$900()[F
+
+    move-result-object v0
+
+    invoke-static {p2, v0}, Landroid/graphics/ColorSpace;->adapt(Landroid/graphics/ColorSpace;[F)Landroid/graphics/ColorSpace;
+
+    move-result-object v0
+
+    move-object v5, v0
+
+    goto :goto_1
+
+    :cond_1
+    move-object v5, p2
+
+    .line 3615
+    :goto_1
+    invoke-static {p1, p2, p3}, Landroid/graphics/ColorSpace$Connector;->computeTransform(Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace$RenderIntent;)[F
+
+    move-result-object v7
+
+    .line 3611
+    move-object v1, p0
+
+    move-object v2, p1
+
+    move-object v3, p2
+
+    move-object v6, p3
+
+    invoke-direct/range {v1 .. v7}, Landroid/graphics/ColorSpace$Connector;-><init>(Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace$RenderIntent;[F)V
+
+    .line 3616
+    return-void
+.end method
+
+.method private constructor greylist-max-o <init>(Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace$RenderIntent;[F)V
+    .locals 0
+
+    .line 3627
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+
+    .line 3628
+    iput-object p1, p0, Landroid/graphics/ColorSpace$Connector;->mSource:Landroid/graphics/ColorSpace;
+
+    .line 3629
+    iput-object p2, p0, Landroid/graphics/ColorSpace$Connector;->mDestination:Landroid/graphics/ColorSpace;
+
+    .line 3630
+    iput-object p3, p0, Landroid/graphics/ColorSpace$Connector;->mTransformSource:Landroid/graphics/ColorSpace;
+
+    .line 3631
+    iput-object p4, p0, Landroid/graphics/ColorSpace$Connector;->mTransformDestination:Landroid/graphics/ColorSpace;
+
+    .line 3632
+    iput-object p5, p0, Landroid/graphics/ColorSpace$Connector;->mIntent:Landroid/graphics/ColorSpace$RenderIntent;
+
+    .line 3633
+    iput-object p6, p0, Landroid/graphics/ColorSpace$Connector;->mTransform:[F
+
+    .line 3634
+    return-void
+.end method
+
+.method synthetic constructor blacklist <init>(Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace$RenderIntent;[FLandroid/graphics/ColorSpace$1;)V
+    .locals 0
+
+    .line 3594
+    invoke-direct/range {p0 .. p6}, Landroid/graphics/ColorSpace$Connector;-><init>(Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace$RenderIntent;[F)V
+
+    return-void
+.end method
+
+.method private static greylist-max-o computeTransform(Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace$RenderIntent;)[F
+    .locals 5
+
+    .line 3643
+    sget-object v0, Landroid/graphics/ColorSpace$RenderIntent;->ABSOLUTE:Landroid/graphics/ColorSpace$RenderIntent;
+
+    const/4 v1, 0x0
+
+    if-eq p2, v0, :cond_0
+
+    return-object v1
+
+    .line 3645
+    :cond_0
+    invoke-virtual {p0}, Landroid/graphics/ColorSpace;->getModel()Landroid/graphics/ColorSpace$Model;
+
+    move-result-object p2
+
+    sget-object v0, Landroid/graphics/ColorSpace$Model;->RGB:Landroid/graphics/ColorSpace$Model;
+
+    const/4 v2, 0x1
+
+    const/4 v3, 0x0
+
+    if-ne p2, v0, :cond_1
+
+    move p2, v2
+
+    goto :goto_0
+
+    :cond_1
+    move p2, v3
+
+    .line 3646
+    :goto_0
+    invoke-virtual {p1}, Landroid/graphics/ColorSpace;->getModel()Landroid/graphics/ColorSpace$Model;
+
+    move-result-object v0
+
+    sget-object v4, Landroid/graphics/ColorSpace$Model;->RGB:Landroid/graphics/ColorSpace$Model;
+
+    if-ne v0, v4, :cond_2
+
+    move v0, v2
+
+    goto :goto_1
+
+    :cond_2
+    move v0, v3
+
+    .line 3648
+    :goto_1
+    if-eqz p2, :cond_3
+
+    if-eqz v0, :cond_3
+
+    return-object v1
+
+    .line 3650
+    :cond_3
+    if-nez p2, :cond_5
+
+    if-eqz v0, :cond_4
+
+    goto :goto_2
+
+    .line 3661
+    :cond_4
+    return-object v1
+
+    .line 3651
+    :cond_5
+    :goto_2
+    if-eqz p2, :cond_6
+
+    goto :goto_3
+
+    :cond_6
+    move-object p0, p1
+
+    :goto_3
+    check-cast p0, Landroid/graphics/ColorSpace$Rgb;
+
+    .line 3652
+    if-eqz p2, :cond_7
+
+    invoke-static {p0}, Landroid/graphics/ColorSpace$Rgb;->access$000(Landroid/graphics/ColorSpace$Rgb;)[F
+
+    move-result-object p1
+
+    invoke-static {p1}, Landroid/graphics/ColorSpace;->access$2200([F)[F
+
+    move-result-object p1
+
+    goto :goto_4
+
+    :cond_7
+    invoke-static {}, Landroid/graphics/ColorSpace;->access$900()[F
+
+    move-result-object p1
+
+    .line 3653
+    :goto_4
+    if-eqz v0, :cond_8
+
+    invoke-static {p0}, Landroid/graphics/ColorSpace$Rgb;->access$000(Landroid/graphics/ColorSpace$Rgb;)[F
+
+    move-result-object p0
+
+    invoke-static {p0}, Landroid/graphics/ColorSpace;->access$2200([F)[F
+
+    move-result-object p0
+
+    goto :goto_5
+
+    :cond_8
+    invoke-static {}, Landroid/graphics/ColorSpace;->access$900()[F
+
+    move-result-object p0
+
+    .line 3654
+    :goto_5
+    const/4 p2, 0x3
+
+    new-array p2, p2, [F
+
+    aget v0, p1, v3
+
+    aget v1, p0, v3
+
+    div-float/2addr v0, v1
+
+    aput v0, p2, v3
+
+    aget v0, p1, v2
+
+    aget v1, p0, v2
+
+    div-float/2addr v0, v1
+
+    aput v0, p2, v2
+
+    const/4 v0, 0x2
+
+    aget p1, p1, v0
+
+    aget p0, p0, v0
+
+    div-float/2addr p1, p0
+
+    aput p1, p2, v0
+
+    return-object p2
+.end method
+
+.method static greylist-max-o identity(Landroid/graphics/ColorSpace;)Landroid/graphics/ColorSpace$Connector;
+    .locals 2
+
+    .line 3843
+    new-instance v0, Landroid/graphics/ColorSpace$Connector$1;
+
+    sget-object v1, Landroid/graphics/ColorSpace$RenderIntent;->RELATIVE:Landroid/graphics/ColorSpace$RenderIntent;
+
+    invoke-direct {v0, p0, p0, v1}, Landroid/graphics/ColorSpace$Connector$1;-><init>(Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace;Landroid/graphics/ColorSpace$RenderIntent;)V
+
+    return-object v0
+.end method
+
+
+# virtual methods
+.method public whitelist getDestination()Landroid/graphics/ColorSpace;
+    .locals 1
+
+    .line 3685
+    iget-object v0, p0, Landroid/graphics/ColorSpace$Connector;->mDestination:Landroid/graphics/ColorSpace;
+
+    return-object v0
+.end method
+
+.method public whitelist getRenderIntent()Landroid/graphics/ColorSpace$RenderIntent;
+    .locals 1
+
+    .line 3697
+    iget-object v0, p0, Landroid/graphics/ColorSpace$Connector;->mIntent:Landroid/graphics/ColorSpace$RenderIntent;
+
+    return-object v0
+.end method
+
+.method public whitelist getSource()Landroid/graphics/ColorSpace;
+    .locals 1
+
+    .line 3673
+    iget-object v0, p0, Landroid/graphics/ColorSpace$Connector;->mSource:Landroid/graphics/ColorSpace;
+
+    return-object v0
+.end method
+
+.method public whitelist transform(FFF)[F
+    .locals 2
+
+    .line 3719
+    const/4 v0, 0x3
+
+    new-array v0, v0, [F
+
+    const/4 v1, 0x0
+
+    aput p1, v0, v1
+
+    const/4 p1, 0x1
+
+    aput p2, v0, p1
+
+    const/4 p1, 0x2
+
+    aput p3, v0, p1
+
+    invoke-virtual {p0, v0}, Landroid/graphics/ColorSpace$Connector;->transform([F)[F
+
+    move-result-object p1
+
+    return-object p1
+.end method
+
+.method public whitelist transform([F)[F
+    .locals 4
+
+    .line 3736
+    iget-object v0, p0, Landroid/graphics/ColorSpace$Connector;->mTransformSource:Landroid/graphics/ColorSpace;
+
+    invoke-virtual {v0, p1}, Landroid/graphics/ColorSpace;->toXyz([F)[F
+
+    move-result-object p1
+
+    .line 3737
+    iget-object v0, p0, Landroid/graphics/ColorSpace$Connector;->mTransform:[F
+
+    if-eqz v0, :cond_0
+
+    .line 3738
+    const/4 v1, 0x0
+
+    aget v2, p1, v1
+
+    aget v3, v0, v1
+
+    mul-float/2addr v2, v3
+
+    aput v2, p1, v1
+
+    .line 3739
+    const/4 v1, 0x1
+
+    aget v2, p1, v1
+
+    aget v3, v0, v1
+
+    mul-float/2addr v2, v3
+
+    aput v2, p1, v1
+
+    .line 3740
+    const/4 v1, 0x2
+
+    aget v2, p1, v1
+
+    aget v0, v0, v1
+
+    mul-float/2addr v2, v0
+
+    aput v2, p1, v1
+
+    .line 3742
+    :cond_0
+    iget-object v0, p0, Landroid/graphics/ColorSpace$Connector;->mTransformDestination:Landroid/graphics/ColorSpace;
+
+    invoke-virtual {v0, p1}, Landroid/graphics/ColorSpace;->fromXyz([F)[F
+
+    move-result-object p1
+
+    return-object p1
+.end method

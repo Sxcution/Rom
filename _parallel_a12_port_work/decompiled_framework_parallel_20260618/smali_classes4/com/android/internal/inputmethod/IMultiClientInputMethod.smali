@@ -1,0 +1,45 @@
+.class public interface abstract Lcom/android/internal/inputmethod/IMultiClientInputMethod;
+.super Ljava/lang/Object;
+.source "IMultiClientInputMethod.java"
+
+# interfaces
+.implements Landroid/os/IInterface;
+
+
+# annotations
+.annotation system Ldalvik/annotation/MemberClasses;
+    value = {
+        Lcom/android/internal/inputmethod/IMultiClientInputMethod$Stub;,
+        Lcom/android/internal/inputmethod/IMultiClientInputMethod$Default;
+    }
+.end annotation
+
+
+# static fields
+.field public static final blacklist DESCRIPTOR:Ljava/lang/String; = "com.android.internal.inputmethod.IMultiClientInputMethod"
+
+
+# virtual methods
+.method public abstract blacklist addClient(IIII)V
+    .annotation system Ldalvik/annotation/Throws;
+        value = {
+            Landroid/os/RemoteException;
+        }
+    .end annotation
+.end method
+
+.method public abstract blacklist initialize(Lcom/android/internal/inputmethod/IMultiClientInputMethodPrivilegedOperations;)V
+    .annotation system Ldalvik/annotation/Throws;
+        value = {
+            Landroid/os/RemoteException;
+        }
+    .end annotation
+.end method
+
+.method public abstract blacklist removeClient(I)V
+    .annotation system Ldalvik/annotation/Throws;
+        value = {
+            Landroid/os/RemoteException;
+        }
+    .end annotation
+.end method

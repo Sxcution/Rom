@@ -1,0 +1,79 @@
+﻿.\_parallel_a12_audit\decompiled_services\smali\com\android\server\am\ActivityManagerService.smali:57265:.method public switchUser(I)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\backup\restore\PerformUnifiedRestoreTask.smali:2475:.method public execute()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\backup\restore\PerformUnifiedRestoreTask$StreamFeederThread.smali:85:.method public execute()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\backup\restore\AdbRestoreFinishedLatch.smali:95:.method public execute()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\am\ActivityManagerService$LocalService.smali:2110:.method public isCurrentProfile(I)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\backup\remote\RemoteCall.smali:88:.method public static execute(Lcom/android/server/backup/remote/RemoteCallable;J)Lcom/android/server/backup/remote/RemoteResult;
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\backup\keyvalue\KeyValueBackupTask.smali:3405:.method public execute()V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\trust\TrustManagerService.smali:3064:.method isDeviceLockedInner(I)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\am\BatteryExternalStatsWorker$3.smali:37:.method public execute(Ljava/lang/Runnable;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\am\BatteryExternalStatsWorker$$ExternalSyntheticLambda7.smali:35:.method public final execute(Ljava/lang/Runnable;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\trust\TrustManagerService$1.smali:710:.method public isDeviceLocked(I)Z
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\trust\TrustManagerService$1.smali:784:.method public isDeviceSecure(I)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\backup\fullbackup\PerformFullTransportBackupTask.smali:574:.method public execute()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\backup\fullbackup\PerformFullTransportBackupTask$SinglePackageBackupRunner.smali:135:.method public execute()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\backup\fullbackup\PerformFullTransportBackupTask$SinglePackageBackupPreflight.smali:74:.method public execute()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\backup\fullbackup\PerformAdbBackupTask.smali:474:.method public execute()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\backup\BackupRestoreTask.smali:7:.method public abstract execute()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\BluetoothDeviceConfigListener$$ExternalSyntheticLambda0.smali:35:.method public final execute(Ljava/lang/Runnable;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\stats\pull\StatsPullAtomService$1.smali:37:.method public execute(Ljava/lang/Runnable;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\internal\util\jobs\ConcurrentUtils$DirectExecutor.smali:39:.method public execute(Ljava/lang/Runnable;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\VpnManagerService.smali:279:.method private enforceCrossUserPermission(I)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\am\UserController.smali:2564:.method private startUserInternal(IZLandroid/os/IProgressListener;Lcom/android/server/utils/TimingsTraceAndSlog;)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\am\UserController.smali:7837:.method isCurrentProfile(I)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\am\UserController.smali:8524:.method public synthetic lambda$startUserInternal$13$UserController(IZLandroid/os/IProgressListener;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\am\UserController.smali:10048:.method switchUser(I)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\am\DataConnectionStats$PhoneStateListenerExecutor.smali:37:.method public execute(Ljava/lang/Runnable;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\SystemServer.smali:977:.method static synthetic lambda$startOtherServices$1()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\SystemServer.smali:1029:.method static synthetic lambda$startOtherServices$2()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\SystemServer.smali:1047:.method static synthetic lambda$startOtherServices$4(Landroid/os/IBinder;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\SystemServer.smali:2861:.method private startOtherServices(Lcom/android/server/utils/TimingsTraceAndSlog;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\SystemServer.smali:7431:.method public synthetic lambda$startOtherServices$3$SystemServer()V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\SystemServer.smali:7465:.method public synthetic lambda$startOtherServices$5$SystemServer(Lcom/android/server/utils/TimingsTraceAndSlog;Lcom/android/server/devicepolicy/DevicePolicyManagerService$Lifecycle;ZLandroid/net/ConnectivityManager;Lcom/android/server/NetworkManagementService;Lcom/android/server/net/NetworkPolicyManagerService;Lcom/android/server/IpSecService;Lcom/android/server/net/NetworkStatsService;Lcom/android/server/VpnManagerService;Lcom/android/server/VcnManagementService;Lcom/android/server/CountryDetectorService;Lcom/android/server/NetworkTimeUpdateService;Lcom/android/server/input/InputManagerService;Lcom/android/server/TelephonyRegistry;Lcom/android/server/media/MediaRouterService;Lcom/android/server/MmsServiceBroker;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\timezone\RulesManagerServiceHelperImpl.smali:78:.method public execute(Ljava/lang/Runnable;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\StorageManagerService$ObbAction.smali:38:.method public execute(Lcom/android/server/StorageManagerService$ObbActionHandler;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\RescueParty$RescuePartyObserver.smali:434:.method public execute(Landroid/content/pm/VersionedPackage;II)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\content\ContentService.smali:327:.method private enforceCrossUserPermission(ILjava/lang/String;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\PackageWatchdog$PackageHealthObserver.smali:18:.method public abstract execute(Landroid/content/pm/VersionedPackage;II)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\NsdService$DaemonConnection.smali:66:.method public varargs execute([Ljava/lang/Object;)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\connectivity\Vpn$Dependencies$$ExternalSyntheticLambda0.smali:35:.method public final execute(Ljava/lang/Runnable;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\wm\ActivityStarter.smali:6596:.method execute()I
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\policy\PhoneWindowManager$14.smali:44:.method execute()V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\policy\PhoneWindowManager$13.smali:44:.method execute()V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\policy\PhoneWindowManager$12.smali:71:.method execute()V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\policy\PhoneWindowManager$11.smali:44:.method execute()V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\testharness\TestHarnessModeService$TestHarnessModeShellCommand.smali:276:.method private isDeviceSecure()Z
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\policy\PhoneWindowManager$10.smali:44:.method execute()V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\policy\KeyCombinationManager$TwoKeysCombinationRule.smali:41:.method abstract execute()V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\UserManagerService.smali:2054:.method private createUserInternalUncheckedNoTracing(Ljava/lang/String;Ljava/lang/String;IIZ[Ljava/lang/String;Lcom/android/server/utils/TimingsTraceAndSlog;Ljava/lang/Object;)Landroid/content/pm/UserInfo;
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\UserManagerService.smali:4021:.method private getProfileIdsLU(ILjava/lang/String;Z)Landroid/util/IntArray;
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\UserManagerService.smali:6071:.method private readUserLP(I)Lcom/android/server/pm/UserManagerService$UserData;
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\UserManagerService.smali:9580:.method private writeUserLP(Lcom/android/server/pm/UserManagerService$UserData;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\UserManagerService.smali:16280:.method readUserLP(ILjava/io/InputStream;)Lcom/android/server/pm/UserManagerService$UserData;
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\UserManagerService.smali:19767:.method writeUserLP(Lcom/android/server/pm/UserManagerService$UserData;Ljava/io/OutputStream;)V
+.\_parallel_a12_audit\decompiled_services\smali\android\net\NetworkFactoryImpl$$ExternalSyntheticLambda0.smali:25:.method public final execute(Ljava/lang/Runnable;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\rollback\RollbackPackageHealthObserver.smali:972:.method public execute(Landroid/content/pm/VersionedPackage;II)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\clipboard\ClipboardService.smali:1464:.method private isDeviceLocked(I)Z
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\wm\RecentTasks.smali:4258:.method getProfileIds(I)Ljava/util/Set;
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\wm\WindowManagerService.smali:16669:.method isCurrentProfile(I)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\notification\ManagedServices$UserProfiles.smali:102:.method public isCurrentProfile(I)Z
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\permission\PermissionManagerService.smali:2920:.method private enforceCrossUserPermission(IIZZLjava/lang/String;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\hdmi\HdmiControlService$1.smali:37:.method public execute(Ljava/lang/Runnable;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\NativeDaemonConnector.smali:1136:.method public varargs execute(JLjava/lang/String;[Ljava/lang/Object;)Lcom/android/server/NativeDaemonEvent;
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\NativeDaemonConnector.smali:1184:.method public execute(Lcom/android/server/NativeDaemonConnector$Command;)Lcom/android/server/NativeDaemonEvent;
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\NativeDaemonConnector.smali:1211:.method public varargs execute(Ljava/lang/String;[Ljava/lang/Object;)Lcom/android/server/NativeDaemonEvent;
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\PackageManagerService.smali:19407:.method private enforceCrossUserPermission(IIZZZLjava/lang/String;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\PackageManagerService.smali:59191:.method enforceCrossUserPermission(IIZZLjava/lang/String;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\location\injector\UserInfoHelper.smali:310:.method protected abstract getProfileIds(I)[I
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\location\injector\SystemUserInfoHelper.smali:271:.method protected getProfileIds(I)[I
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\inputmethod\InputMethodUtils$InputMethodSettings.smali:1792:.method public isCurrentProfile(I)Z
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\PackageManagerService$ComputerTracker.smali:338:.method public final enforceCrossUserPermission(IIZZLjava/lang/String;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\PackageManagerService$ComputerTracker.smali:376:.method public final enforceCrossUserPermission(IIZZZLjava/lang/String;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\PackageManagerService$ComputerEngine.smali:3732:.method public final enforceCrossUserPermission(IIZZLjava/lang/String;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\PackageManagerService$ComputerEngine.smali:3754:.method public final enforceCrossUserPermission(IIZZZLjava/lang/String;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\PackageManagerService$Computer.smali:76:.method public abstract enforceCrossUserPermission(IIZZLjava/lang/String;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\PackageManagerService$Computer.smali:82:.method public abstract enforceCrossUserPermission(IIZZZLjava/lang/String;)V
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\LauncherAppsService$LauncherAppsImpl.smali:310:.method private canAccessProfile(ILjava/lang/String;)Z
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\locksettings\recoverablekeystore\PlatformKeyManager.smali:864:.method public isDeviceLocked(I)Z
+.\_parallel_a12_audit\decompiled_services\smali_classes2\com\android\server\pm\Installer$Batch.smali:132:.method public declared-synchronized execute(Lcom/android/server/pm/Installer;)V
+.\_parallel_a12_audit\decompiled_services\smali\com\android\server\media\HandlerExecutor.smali:30:.method public execute(Ljava/lang/Runnable;)V

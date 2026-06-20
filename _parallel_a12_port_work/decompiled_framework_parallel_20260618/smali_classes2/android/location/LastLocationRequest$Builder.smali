@@ -1,0 +1,127 @@
+.class public final Landroid/location/LastLocationRequest$Builder;
+.super Ljava/lang/Object;
+.source "LastLocationRequest.java"
+
+
+# annotations
+.annotation system Ldalvik/annotation/EnclosingClass;
+    value = Landroid/location/LastLocationRequest;
+.end annotation
+
+.annotation system Ldalvik/annotation/InnerClass;
+    accessFlags = 0x19
+    name = "Builder"
+.end annotation
+
+
+# instance fields
+.field private blacklist mAdasGnssBypass:Z
+
+.field private blacklist mHiddenFromAppOps:Z
+
+.field private blacklist mLocationSettingsIgnored:Z
+
+
+# direct methods
+.method public constructor whitelist <init>()V
+    .locals 1
+
+    .line 173
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+
+    .line 174
+    const/4 v0, 0x0
+
+    iput-boolean v0, p0, Landroid/location/LastLocationRequest$Builder;->mHiddenFromAppOps:Z
+
+    .line 175
+    iput-boolean v0, p0, Landroid/location/LastLocationRequest$Builder;->mAdasGnssBypass:Z
+
+    .line 176
+    iput-boolean v0, p0, Landroid/location/LastLocationRequest$Builder;->mLocationSettingsIgnored:Z
+
+    .line 177
+    return-void
+.end method
+
+.method public constructor whitelist <init>(Landroid/location/LastLocationRequest;)V
+    .locals 1
+
+    .line 182
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+
+    .line 183
+    invoke-static {p1}, Landroid/location/LastLocationRequest;->access$100(Landroid/location/LastLocationRequest;)Z
+
+    move-result v0
+
+    iput-boolean v0, p0, Landroid/location/LastLocationRequest$Builder;->mHiddenFromAppOps:Z
+
+    .line 184
+    invoke-static {p1}, Landroid/location/LastLocationRequest;->access$200(Landroid/location/LastLocationRequest;)Z
+
+    move-result v0
+
+    iput-boolean v0, p0, Landroid/location/LastLocationRequest$Builder;->mAdasGnssBypass:Z
+
+    .line 185
+    invoke-static {p1}, Landroid/location/LastLocationRequest;->access$300(Landroid/location/LastLocationRequest;)Z
+
+    move-result p1
+
+    iput-boolean p1, p0, Landroid/location/LastLocationRequest$Builder;->mLocationSettingsIgnored:Z
+
+    .line 186
+    return-void
+.end method
+
+
+# virtual methods
+.method public whitelist build()Landroid/location/LastLocationRequest;
+    .locals 5
+
+    .line 242
+    new-instance v0, Landroid/location/LastLocationRequest;
+
+    iget-boolean v1, p0, Landroid/location/LastLocationRequest$Builder;->mHiddenFromAppOps:Z
+
+    iget-boolean v2, p0, Landroid/location/LastLocationRequest$Builder;->mAdasGnssBypass:Z
+
+    iget-boolean v3, p0, Landroid/location/LastLocationRequest$Builder;->mLocationSettingsIgnored:Z
+
+    const/4 v4, 0x0
+
+    invoke-direct {v0, v1, v2, v3, v4}, Landroid/location/LastLocationRequest;-><init>(ZZZLandroid/location/LastLocationRequest$1;)V
+
+    return-object v0
+.end method
+
+.method public blacklist setAdasGnssBypass(Z)Landroid/location/LastLocationRequest$Builder;
+    .locals 0
+
+    .line 217
+    iput-boolean p1, p0, Landroid/location/LastLocationRequest$Builder;->mAdasGnssBypass:Z
+
+    .line 218
+    return-object p0
+.end method
+
+.method public whitelist setHiddenFromAppOps(Z)Landroid/location/LastLocationRequest$Builder;
+    .locals 0
+
+    .line 198
+    iput-boolean p1, p0, Landroid/location/LastLocationRequest$Builder;->mHiddenFromAppOps:Z
+
+    .line 199
+    return-object p0
+.end method
+
+.method public whitelist setLocationSettingsIgnored(Z)Landroid/location/LastLocationRequest$Builder;
+    .locals 0
+
+    .line 232
+    iput-boolean p1, p0, Landroid/location/LastLocationRequest$Builder;->mLocationSettingsIgnored:Z
+
+    .line 233
+    return-object p0
+.end method

@@ -1,0 +1,6 @@
+version: 2.12.0
+apkFileName: service-appsearch.jar
+sdkInfo:
+  minSdkVersion: 29
+doNotCompress:
+- dex

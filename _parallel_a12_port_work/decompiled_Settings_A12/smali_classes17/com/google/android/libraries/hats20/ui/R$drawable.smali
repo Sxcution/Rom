@@ -1,0 +1,8 @@
+.class public final Lcom/google/android/libraries/hats20/ui/R$drawable;
+.super Ljava/lang/Object;
+
+
+# static fields
+.field public static final quantum_ic_star_black_24:I = 0x7f020409
+
+.field public static final quantum_ic_star_border_grey600_24:I = 0x7f02040a

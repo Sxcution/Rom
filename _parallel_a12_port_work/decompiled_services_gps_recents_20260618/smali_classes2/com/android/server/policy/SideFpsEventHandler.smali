@@ -1,0 +1,231 @@
+.class public Lcom/android/server/policy/SideFpsEventHandler;
+.super Ljava/lang/Object;
+.source "SideFpsEventHandler.java"
+
+
+# instance fields
+.field private final mContext:Landroid/content/Context;
+
+.field private mFingerprintState:I
+
+.field private final mHandler:Landroid/os/Handler;
+
+.field private final mIsSideFps:Ljava/util/concurrent/atomic/AtomicBoolean;
+
+.field private final mPowerManager:Landroid/os/PowerManager;
+
+.field private final mSideFpsEventHandlerReady:Ljava/util/concurrent/atomic/AtomicBoolean;
+
+
+# direct methods
+.method constructor <init>(Landroid/content/Context;Landroid/os/Handler;Landroid/os/PowerManager;)V
+    .locals 0
+
+    invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+
+    iput-object p1, p0, Lcom/android/server/policy/SideFpsEventHandler;->mContext:Landroid/content/Context;
+
+    iput-object p2, p0, Lcom/android/server/policy/SideFpsEventHandler;->mHandler:Landroid/os/Handler;
+
+    iput-object p3, p0, Lcom/android/server/policy/SideFpsEventHandler;->mPowerManager:Landroid/os/PowerManager;
+
+    const/4 p1, 0x0
+
+    iput p1, p0, Lcom/android/server/policy/SideFpsEventHandler;->mFingerprintState:I
+
+    new-instance p2, Ljava/util/concurrent/atomic/AtomicBoolean;
+
+    invoke-direct {p2, p1}, Ljava/util/concurrent/atomic/AtomicBoolean;-><init>(Z)V
+
+    iput-object p2, p0, Lcom/android/server/policy/SideFpsEventHandler;->mIsSideFps:Ljava/util/concurrent/atomic/AtomicBoolean;
+
+    new-instance p2, Ljava/util/concurrent/atomic/AtomicBoolean;
+
+    invoke-direct {p2, p1}, Ljava/util/concurrent/atomic/AtomicBoolean;-><init>(Z)V
+
+    iput-object p2, p0, Lcom/android/server/policy/SideFpsEventHandler;->mSideFpsEventHandlerReady:Ljava/util/concurrent/atomic/AtomicBoolean;
+
+    return-void
+.end method
+
+.method static synthetic access$000(Lcom/android/server/policy/SideFpsEventHandler;)Ljava/util/concurrent/atomic/AtomicBoolean;
+    .locals 0
+
+    iget-object p0, p0, Lcom/android/server/policy/SideFpsEventHandler;->mIsSideFps:Ljava/util/concurrent/atomic/AtomicBoolean;
+
+    return-object p0
+.end method
+
+.method static synthetic access$102(Lcom/android/server/policy/SideFpsEventHandler;I)I
+    .locals 0
+
+    iput p1, p0, Lcom/android/server/policy/SideFpsEventHandler;->mFingerprintState:I
+
+    return p1
+.end method
+
+.method static synthetic access$200(Lcom/android/server/policy/SideFpsEventHandler;)Ljava/util/concurrent/atomic/AtomicBoolean;
+    .locals 0
+
+    iget-object p0, p0, Lcom/android/server/policy/SideFpsEventHandler;->mSideFpsEventHandlerReady:Ljava/util/concurrent/atomic/AtomicBoolean;
+
+    return-object p0
+.end method
+
+.method static synthetic access$300(Lcom/android/server/policy/SideFpsEventHandler;)Landroid/os/PowerManager;
+    .locals 0
+
+    iget-object p0, p0, Lcom/android/server/policy/SideFpsEventHandler;->mPowerManager:Landroid/os/PowerManager;
+
+    return-object p0
+.end method
+
+
+# virtual methods
+.method public synthetic lambda$onSinglePressDetected$0$SideFpsEventHandler(J)V
+    .locals 2
+
+    new-instance v0, Landroid/app/AlertDialog$Builder;
+
+    iget-object v1, p0, Lcom/android/server/policy/SideFpsEventHandler;->mContext:Landroid/content/Context;
+
+    invoke-direct {v0, v1}, Landroid/app/AlertDialog$Builder;-><init>(Landroid/content/Context;)V
+
+    const v1, 0x10403cd
+
+    invoke-virtual {v0, v1}, Landroid/app/AlertDialog$Builder;->setTitle(I)Landroid/app/AlertDialog$Builder;
+
+    move-result-object v0
+
+    const v1, 0x10403ca
+
+    invoke-virtual {v0, v1}, Landroid/app/AlertDialog$Builder;->setMessage(I)Landroid/app/AlertDialog$Builder;
+
+    move-result-object v0
+
+    new-instance v1, Lcom/android/server/policy/SideFpsEventHandler$2;
+
+    invoke-direct {v1, p0, p1, p2}, Lcom/android/server/policy/SideFpsEventHandler$2;-><init>(Lcom/android/server/policy/SideFpsEventHandler;J)V
+
+    const p1, 0x10403cc
+
+    invoke-virtual {v0, p1, v1}, Landroid/app/AlertDialog$Builder;->setPositiveButton(ILandroid/content/DialogInterface$OnClickListener;)Landroid/app/AlertDialog$Builder;
+
+    move-result-object p1
+
+    new-instance p2, Lcom/android/server/policy/SideFpsEventHandler$1;
+
+    invoke-direct {p2, p0}, Lcom/android/server/policy/SideFpsEventHandler$1;-><init>(Lcom/android/server/policy/SideFpsEventHandler;)V
+
+    const v0, 0x10403cb
+
+    invoke-virtual {p1, v0, p2}, Landroid/app/AlertDialog$Builder;->setNegativeButton(ILandroid/content/DialogInterface$OnClickListener;)Landroid/app/AlertDialog$Builder;
+
+    move-result-object p1
+
+    const/4 p2, 0x0
+
+    invoke-virtual {p1, p2}, Landroid/app/AlertDialog$Builder;->setCancelable(Z)Landroid/app/AlertDialog$Builder;
+
+    move-result-object p1
+
+    invoke-virtual {p1}, Landroid/app/AlertDialog$Builder;->create()Landroid/app/AlertDialog;
+
+    move-result-object p1
+
+    invoke-virtual {p1}, Landroid/app/Dialog;->getWindow()Landroid/view/Window;
+
+    move-result-object p2
+
+    const/16 v0, 0x7e1
+
+    invoke-virtual {p2, v0}, Landroid/view/Window;->setType(I)V
+
+    invoke-virtual {p1}, Landroid/app/Dialog;->show()V
+
+    return-void
+.end method
+
+.method public onFingerprintSensorReady()V
+    .locals 2
+
+    iget-object v0, p0, Lcom/android/server/policy/SideFpsEventHandler;->mContext:Landroid/content/Context;
+
+    invoke-virtual {v0}, Landroid/content/Context;->getPackageManager()Landroid/content/pm/PackageManager;
+
+    move-result-object v0
+
+    const-string v1, "android.hardware.fingerprint"
+
+    invoke-virtual {v0, v1}, Landroid/content/pm/PackageManager;->hasSystemFeature(Ljava/lang/String;)Z
+
+    move-result v0
+
+    if-nez v0, :cond_0
+
+    return-void
+
+    :cond_0
+    iget-object v0, p0, Lcom/android/server/policy/SideFpsEventHandler;->mContext:Landroid/content/Context;
+
+    const-class v1, Landroid/hardware/fingerprint/FingerprintManager;
+
+    invoke-virtual {v0, v1}, Landroid/content/Context;->getSystemService(Ljava/lang/Class;)Ljava/lang/Object;
+
+    move-result-object v0
+
+    check-cast v0, Landroid/hardware/fingerprint/FingerprintManager;
+
+    new-instance v1, Lcom/android/server/policy/SideFpsEventHandler$3;
+
+    invoke-direct {v1, p0, v0}, Lcom/android/server/policy/SideFpsEventHandler$3;-><init>(Lcom/android/server/policy/SideFpsEventHandler;Landroid/hardware/fingerprint/FingerprintManager;)V
+
+    invoke-virtual {v0, v1}, Landroid/hardware/fingerprint/FingerprintManager;->addAuthenticatorsRegisteredCallback(Landroid/hardware/fingerprint/IFingerprintAuthenticatorsRegisteredCallback;)V
+
+    return-void
+.end method
+
+.method public onSinglePressDetected(J)Z
+    .locals 3
+
+    iget-object v0, p0, Lcom/android/server/policy/SideFpsEventHandler;->mSideFpsEventHandlerReady:Ljava/util/concurrent/atomic/AtomicBoolean;
+
+    invoke-virtual {v0}, Ljava/util/concurrent/atomic/AtomicBoolean;->get()Z
+
+    move-result v0
+
+    if-eqz v0, :cond_1
+
+    iget-object v0, p0, Lcom/android/server/policy/SideFpsEventHandler;->mIsSideFps:Ljava/util/concurrent/atomic/AtomicBoolean;
+
+    invoke-virtual {v0}, Ljava/util/concurrent/atomic/AtomicBoolean;->get()Z
+
+    move-result v0
+
+    if-eqz v0, :cond_1
+
+    iget v0, p0, Lcom/android/server/policy/SideFpsEventHandler;->mFingerprintState:I
+
+    const/4 v1, 0x1
+
+    if-eq v0, v1, :cond_0
+
+    goto :goto_0
+
+    :cond_0
+    iget-object v0, p0, Lcom/android/server/policy/SideFpsEventHandler;->mHandler:Landroid/os/Handler;
+
+    new-instance v2, Lcom/android/server/policy/SideFpsEventHandler$$ExternalSyntheticLambda0;
+
+    invoke-direct {v2, p0, p1, p2}, Lcom/android/server/policy/SideFpsEventHandler$$ExternalSyntheticLambda0;-><init>(Lcom/android/server/policy/SideFpsEventHandler;J)V
+
+    invoke-virtual {v0, v2}, Landroid/os/Handler;->post(Ljava/lang/Runnable;)Z
+
+    return v1
+
+    :cond_1
+    :goto_0
+    const/4 p1, 0x0
+
+    return p1
+.end method
