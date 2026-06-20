@@ -176,17 +176,26 @@ public class HomeCellLayout extends ViewGroup {
             return AdapterView.INVALID_POSITION;
         }
 
-        // Check if the coordinate falls inside the hot-zone of any cell (central 32%)
+        // Only switch target after the drag point is clearly inside a cell.
+        // A wider nearest-cell hit test makes neighboring icons move before the
+        // dragged icon visually reaches that grid slot.
+        final float hotZoneScale = 0.60f;
         for (int cy = 0; cy < rows; cy++) {
             for (int cx = 0; cx < columns; cx++) {
                 int left = getPaddingLeft() + cx * (cellWidth + hSpacing);
                 int top = getPaddingTop() + cy * (cellHeight + vSpacing);
+                int right = left + cellWidth;
+                int bottom = top + cellHeight;
+
+                if (x < left || x > right || y < top || y > bottom) {
+                    continue;
+                }
 
                 float centerX = left + cellWidth / 2.0f;
                 float centerY = top + cellHeight / 2.0f;
 
-                float rx = cellWidth * 0.32f;
-                float ry = cellHeight * 0.32f;
+                float rx = cellWidth * hotZoneScale / 2.0f;
+                float ry = cellHeight * hotZoneScale / 2.0f;
 
                 if (Math.abs(x - centerX) <= rx && Math.abs(y - centerY) <= ry) {
                     return cy * columns + cx;
@@ -210,6 +219,12 @@ public class HomeCellLayout extends ViewGroup {
             return cy * columns + cx;
         }
         return AdapterView.INVALID_POSITION;
+    }
+
+    private boolean isPlaceholderItem(ParallelHomeActivity.AppItem item) {
+        return item != null
+            && item.componentName != null
+            && "__placeholder__".equals(item.componentName.getPackageName());
     }
 
     public void bindApps(List<ParallelHomeActivity.AppItem> apps, int cols, int rows, boolean isDraggingApp, ParallelHomeActivity activity) {
@@ -250,6 +265,10 @@ public class HomeCellLayout extends ViewGroup {
             }
 
             if (childView != null) {
+                childView.animate().cancel();
+                if (!isPlaceholderItem(item)) {
+                    childView.setAlpha(1.0f);
+                }
                 CellLayoutParams lp = new CellLayoutParams(cellX, cellY, item);
                 addViewInLayout(childView, -1, lp);
             }
@@ -286,9 +305,9 @@ public class HomeCellLayout extends ViewGroup {
                                 .setInterpolator(new DecelerateInterpolator())
                                 .start();
                         }
-                    } else {
-                        child.setAlpha(0.2f);
-                        child.animate().alpha(1.0f).setDuration(200).start();
+                    } else if (!isPlaceholderItem(lp.appItem)) {
+                        child.animate().cancel();
+                        child.setAlpha(1.0f);
                     }
                 }
             }

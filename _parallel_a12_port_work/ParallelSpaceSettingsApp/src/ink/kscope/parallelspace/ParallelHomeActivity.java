@@ -167,6 +167,9 @@ public class ParallelHomeActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (isHomeTab) {
+            resetHomePresentation();
+        }
         
         SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
         int homeCols = sp.getInt("launcher_home_grid_columns", 4);
@@ -221,6 +224,8 @@ public class ParallelHomeActivity extends Activity {
         if (Intent.ACTION_MAIN.equals(intent.getAction()) && intent.hasCategory(Intent.CATEGORY_HOME)) {
             if (!isHomeTab) {
                 animateDrawerTo(false);
+            } else {
+                resetHomePresentation();
             }
         }
     }
@@ -436,6 +441,7 @@ public class ParallelHomeActivity extends Activity {
                 public void onAnimationEnd(android.animation.Animator animation) {
                     if (!open) {
                         drawerGridView.setVisibility(View.GONE);
+                        resetHomePresentation();
                     }
                     android.util.Log.d("ParallelHome", "Animation End: visibility=" + (open ? "VISIBLE" : "GONE") + ", translationY=" + drawerGridView.getTranslationY() + ", alpha=" + drawerGridView.getAlpha());
                 }
@@ -451,6 +457,16 @@ public class ParallelHomeActivity extends Activity {
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
                 .start();
         }
+    }
+
+    private void resetHomePresentation() {
+        if (homeCellLayout == null) {
+            return;
+        }
+        homeCellLayout.animate().cancel();
+        homeCellLayout.setAlpha(1.0f);
+        homeCellLayout.setScaleX(1.0f);
+        homeCellLayout.setScaleY(1.0f);
     }
 
     private View buildLayout() {
@@ -1514,6 +1530,9 @@ public class ParallelHomeActivity extends Activity {
         draggedFromDrawer = false;
         dragCommitted = false;
         isDraggingApp = false;
+        if (isHomeTab) {
+            resetHomePresentation();
+        }
         if (homeCellLayout != null) {
             homeCellLayout.hideGridOverlay();
         }
@@ -1533,12 +1552,6 @@ public class ParallelHomeActivity extends Activity {
             return preview;
         }
 
-        int cols = 4;
-        SharedPreferences settingsSp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
-        if (settingsSp != null) {
-            cols = settingsSp.getInt("launcher_home_grid_columns", 4);
-        }
-
         int gridSize = dragBackupList.size();
         if (insertIndex < 0 || insertIndex >= gridSize) {
             return new ArrayList<>(dragBackupList);
@@ -1548,79 +1561,28 @@ public class ParallelHomeActivity extends Activity {
             preview.add(item);
         }
 
-        int vacantPos = -1;
+        AppItem targetItem = preview.get(insertIndex);
+        boolean targetIsEmpty = targetItem == null || targetItem.isEmpty || isPlaceholder(targetItem);
+
         if (draggedFromDrawer) {
-            int bestDist = Integer.MAX_VALUE;
-            int insertRow = insertIndex / cols;
-            int insertCol = insertIndex % cols;
-
-            for (int i = 0; i < gridSize; i++) {
-                if (dragBackupList.get(i).isEmpty) {
-                    int r = i / cols;
-                    int c = i % cols;
-                    int dist = Math.abs(r - insertRow) + Math.abs(c - insertCol);
-                    if (dist < bestDist) {
-                        bestDist = dist;
-                        vacantPos = i;
-                    }
-                }
+            if (!targetIsEmpty) {
+                return new ArrayList<AppItem>();
             }
-            if (vacantPos == -1) {
-                return preview;
-            }
-        } else {
-            vacantPos = draggedPosition;
-            if (vacantPos < 0 || vacantPos >= gridSize) {
-                return preview;
-            }
-        }
-
-        if (insertIndex == vacantPos) {
             preview.set(insertIndex, dragPlaceholder);
             return preview;
         }
 
-        int toRow = insertIndex / cols;
-        int toCol = insertIndex % cols;
-        int fromRow = vacantPos / cols;
-        int fromCol = vacantPos % cols;
-
-        if (toRow == fromRow) {
-            if (insertIndex < vacantPos) {
-                for (int c = fromCol; c > toCol; c--) {
-                    int idx = toRow * cols + c;
-                    preview.set(idx, preview.get(idx - 1));
-                }
-            } else {
-                for (int c = fromCol; c < toCol; c++) {
-                    int idx = toRow * cols + c;
-                    preview.set(idx, preview.get(idx + 1));
-                }
-            }
-        } else if (toCol == fromCol) {
-            if (insertIndex < vacantPos) {
-                for (int r = fromRow; r > toRow; r--) {
-                    int idx = r * cols + toCol;
-                    preview.set(idx, preview.get((r - 1) * cols + toCol));
-                }
-            } else {
-                for (int r = fromRow; r < toRow; r++) {
-                    int idx = r * cols + toCol;
-                    preview.set(idx, preview.get((r + 1) * cols + toCol));
-                }
-            }
-        } else {
-            if (insertIndex < vacantPos) {
-                for (int i = vacantPos; i > insertIndex; i--) {
-                    preview.set(i, preview.get(i - 1));
-                }
-            } else {
-                for (int i = vacantPos; i < insertIndex; i++) {
-                    preview.set(i, preview.get(i + 1));
-                }
-            }
+        int sourceIndex = draggedPosition;
+        if (sourceIndex < 0 || sourceIndex >= gridSize) {
+            return new ArrayList<AppItem>();
         }
 
+        if (insertIndex == sourceIndex) {
+            preview.set(sourceIndex, dragPlaceholder);
+            return preview;
+        }
+
+        preview.set(sourceIndex, targetIsEmpty ? new AppItem() : targetItem);
         preview.set(insertIndex, dragPlaceholder);
         return preview;
     }
