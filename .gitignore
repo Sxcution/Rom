@@ -1,0 +1,18 @@
+# Ignore all files and directories by default at the root
+/*
+
+# Exclude documentation files and the custom work folder
+!project_structure.md
+!naming_registry.json
+!walkthrough.md
+!.gitignore
+!_parallel_a12_port_work/
+
+# Inside the work folder, ignore everything except our settings and launcher app
+_parallel_a12_port_work/*
+!_parallel_a12_port_work/ParallelSpaceSettingsApp/
+
+# Ignore local build outputs, temporary files, and debug keystore keys inside the app
+_parallel_a12_port_work/ParallelSpaceSettingsApp/build/
+_parallel_a12_port_work/ParallelSpaceSettingsApp/*.apk
+_parallel_a12_port_work/ParallelSpaceSettingsApp/*.idsig

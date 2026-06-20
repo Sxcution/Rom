@@ -1,0 +1,21 @@
+{
+  "classes": {
+    "ParallelHomeActivity": "ink.kscope.parallelspace.ParallelHomeActivity",
+    "BadgeIconRenderer": "ink.kscope.parallelspace.BadgeIconRenderer",
+    "ParallelSpaceActivity": "ink.kscope.parallelspace.ParallelSpaceActivity"
+  },
+  "services": {
+    "SERVICE_NAME": "parallel",
+    "DESCRIPTOR": "ink.kaleidoscope.IParallelSpaceManager"
+  },
+  "binder_transactions": {
+    "TX_CREATE": 1,
+    "TX_GET_USERS": 3,
+    "TX_DUPLICATE_PACKAGE": 5,
+    "TX_REMOVE_PACKAGE": 6
+  },
+  "secure_settings_keys": {
+    "KEY_GLOBAL": "parallel_space_whitelist",
+    "KEY_SPACE_PREFIX": "parallel_space_apps_user_"
+  }
+}
