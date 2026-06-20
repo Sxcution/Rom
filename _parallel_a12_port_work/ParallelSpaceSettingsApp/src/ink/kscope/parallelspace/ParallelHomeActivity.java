@@ -475,7 +475,6 @@ public class ParallelHomeActivity extends Activity {
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.TRANSPARENT);
-        root.setPadding(dp(16), dp(16), dp(16), dp(16));
 
         homeGridView = new GridView(this);
         homeGridView.setNumColumns(homeCols);
@@ -484,6 +483,8 @@ public class ParallelHomeActivity extends Activity {
         homeGridView.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
         homeGridView.setVerticalScrollBarEnabled(false);
         homeGridView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        homeGridView.setPadding(dp(16), dp(16), dp(16), dp(16));
+        homeGridView.setClipToPadding(false);
         root.addView(homeGridView, new FrameLayout.LayoutParams(-1, -1));
 
         drawerGridView = new GridView(this);
@@ -491,7 +492,15 @@ public class ParallelHomeActivity extends Activity {
         drawerGridView.setVerticalSpacing(dp(20));
         drawerGridView.setHorizontalSpacing(dp(10));
         drawerGridView.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
-        drawerGridView.setBackgroundColor(Color.parseColor("#E6000000")); // 90% semi-transparent black for premium drawer overlay
+        
+        android.graphics.drawable.GradientDrawable drawerBg = new android.graphics.drawable.GradientDrawable();
+        drawerBg.setColor(Color.parseColor("#E6000000")); // 90% semi-transparent black for premium drawer overlay
+        float r = dp(20);
+        drawerBg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
+        drawerGridView.setBackground(drawerBg);
+        
+        drawerGridView.setPadding(dp(16), dp(24), dp(16), dp(16));
+        drawerGridView.setClipToPadding(false);
         drawerGridView.setVisibility(View.GONE);
         root.addView(drawerGridView, new FrameLayout.LayoutParams(-1, -1));
 
@@ -1441,6 +1450,7 @@ public class ParallelHomeActivity extends Activity {
         pinnedAppList.set(position, dragPlaceholder);
         placeholderPosition = position;
 
+        isDraggingApp = true;
         homeAdapter.notifyDataSetChanged();
 
         DragPayload payload = new DragPayload(position, false);
@@ -1465,6 +1475,11 @@ public class ParallelHomeActivity extends Activity {
         dragPlaceholder = createPlaceholderEntry();
         placeholderPosition = AdapterView.INVALID_POSITION;
 
+        isDraggingApp = true;
+        if (homeAdapter != null) {
+            homeAdapter.notifyDataSetChanged();
+        }
+
         DragPayload payload = new DragPayload(AdapterView.INVALID_POSITION, true);
         ClipData data = ClipData.newPlainText("app_item", "");
         itemView.startDragAndDrop(
@@ -1480,23 +1495,21 @@ public class ParallelHomeActivity extends Activity {
             return;
         }
 
-        if (dragPlaceholder == null) {
+        if (dragPlaceholder == null || dragBackupList == null) {
             return;
         }
 
-        int oldIndex = pinnedAppList.indexOf(dragPlaceholder);
-        if (oldIndex == -1) {
-            // Dragging from drawer, placeholder is not in pinnedAppList yet.
-            // Remove the first empty slot to maintain grid size before inserting placeholder.
+        if (draggedFromDrawer) {
+            List<AppItem> temp = new ArrayList<>(dragBackupList);
             int emptyIndex = -1;
-            for (int i = 0; i < pinnedAppList.size(); i++) {
-                if (pinnedAppList.get(i).isEmpty) {
+            for (int i = 0; i < temp.size(); i++) {
+                if (temp.get(i).isEmpty) {
                     emptyIndex = i;
                     break;
                 }
             }
             if (emptyIndex != -1) {
-                pinnedAppList.remove(emptyIndex);
+                temp.remove(emptyIndex);
             } else {
                 // Home is full, do not allow drag-in
                 return;
@@ -1505,38 +1518,38 @@ public class ParallelHomeActivity extends Activity {
             if (insertIndex < 0) {
                 insertIndex = 0;
             }
-            if (insertIndex > pinnedAppList.size()) {
-                insertIndex = pinnedAppList.size();
+            if (insertIndex > temp.size()) {
+                insertIndex = temp.size();
             }
-            pinnedAppList.add(insertIndex, dragPlaceholder);
+
+            temp.add(insertIndex, dragPlaceholder);
+
+            pinnedAppList.clear();
+            pinnedAppList.addAll(temp);
             placeholderPosition = insertIndex;
             homeAdapter.notifyDataSetChanged();
-            return;
+        } else {
+            // Dragged from home
+            if (draggedPosition < 0 || draggedPosition >= dragBackupList.size()) {
+                return;
+            }
+            List<AppItem> temp = new ArrayList<>(dragBackupList);
+            temp.remove(draggedPosition);
+
+            if (insertIndex < 0) {
+                insertIndex = 0;
+            }
+            if (insertIndex > temp.size()) {
+                insertIndex = temp.size();
+            }
+
+            temp.add(insertIndex, dragPlaceholder);
+
+            pinnedAppList.clear();
+            pinnedAppList.addAll(temp);
+            placeholderPosition = insertIndex;
+            homeAdapter.notifyDataSetChanged();
         }
-
-        pinnedAppList.remove(oldIndex);
-
-        if (oldIndex < insertIndex) {
-            insertIndex--;
-        }
-
-        if (insertIndex < 0) {
-            insertIndex = 0;
-        }
-
-        if (insertIndex > pinnedAppList.size()) {
-            insertIndex = pinnedAppList.size();
-        }
-
-        if (insertIndex == oldIndex) {
-            pinnedAppList.add(oldIndex, dragPlaceholder);
-            return;
-        }
-
-        pinnedAppList.add(insertIndex, dragPlaceholder);
-        placeholderPosition = insertIndex;
-
-        homeAdapter.notifyDataSetChanged();
     }
 
     private void commitLauncherDrop() {
@@ -1596,6 +1609,10 @@ public class ParallelHomeActivity extends Activity {
         placeholderPosition = AdapterView.INVALID_POSITION;
         draggedFromDrawer = false;
         dragCommitted = false;
+        isDraggingApp = false;
+        if (homeAdapter != null) {
+            homeAdapter.notifyDataSetChanged();
+        }
     }
 
     private void dismissActivePopup() {
