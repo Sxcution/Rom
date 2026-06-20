@@ -49,9 +49,8 @@ public class ParallelHomeActivity extends Activity {
     private LauncherApps launcherApps;
     private IBinder parallelService;
 
-    private GridView homeGridView;
+    private HomeCellLayout homeCellLayout;
     private GridView drawerGridView;
-    private GridOverlayView homeGridOverlay;
     private GridOverlayView drawerGridOverlay;
     private boolean isHomeTab = true;
 
@@ -89,16 +88,6 @@ public class ParallelHomeActivity extends Activity {
         
         setContentView(buildLayout());
 
-        homeGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                if (position >= 0 && position < pinnedAppList.size()) {
-                    AppItem item = pinnedAppList.get(position);
-                    launchAppItem(item);
-                }
-            }
-        });
-
         drawerGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -109,12 +98,9 @@ public class ParallelHomeActivity extends Activity {
             }
         });
 
-        homeGridView.setOnDragListener(new View.OnDragListener() {
+        homeCellLayout.setOnDragListener(new View.OnDragListener() {
             @Override
             public boolean onDrag(View v, DragEvent event) {
-                SharedPreferences settingsSp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
-                int homeCols = settingsSp.getInt("launcher_home_grid_columns", 4);
-
                 switch (event.getAction()) {
                     case DragEvent.ACTION_DRAG_STARTED:
                         dismissActivePopup();
@@ -123,10 +109,10 @@ public class ParallelHomeActivity extends Activity {
                     case DragEvent.ACTION_DRAG_LOCATION:
                     case DragEvent.ACTION_DRAG_ENTERED:
                         dismissActivePopup();
-                        int targetIndex = getNearestTargetIndexFromCoords(
+                        int targetIndex = homeCellLayout.getCellTargetIndex(
                                 (int) event.getX(),
                                 (int) event.getY(),
-                                homeGridView
+                                placeholderPosition
                         );
                         if (targetIndex != AdapterView.INVALID_POSITION && targetIndex != placeholderPosition) {
                             movePlaceholderTo(targetIndex);
@@ -163,21 +149,8 @@ public class ParallelHomeActivity extends Activity {
                         }
                         animateDrawerTo(false);
                         return true;
-                }
-                return false;
-            }
-        });
-
-        homeGridView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
-            @Override
-            public void onLayoutChange(View v, int left, int top, int right, int bottom,
-                                       int oldLeft, int oldTop, int oldRight, int oldBottom) {
-                int height = bottom - top;
-                int oldHeight = oldBottom - oldTop;
-                if (height > 0 && height != oldHeight) {
-                    if (homeAdapter != null) {
-                        homeAdapter.notifyDataSetChanged();
-                    }
+                    default:
+                        return true;
                 }
             }
         });
@@ -199,14 +172,11 @@ public class ParallelHomeActivity extends Activity {
         int homeCols = sp.getInt("launcher_home_grid_columns", 4);
         int drawerCols = sp.getInt("launcher_drawer_grid_columns", 4);
         
-        if (homeGridView != null) {
-            homeGridView.setNumColumns(homeCols);
+        if (homeCellLayout != null) {
+            homeCellLayout.setGridSize(homeCols, sp.getInt("launcher_home_grid_rows", 6));
         }
         if (drawerGridView != null) {
             drawerGridView.setNumColumns(drawerCols);
-        }
-        if (homeGridOverlay != null) {
-            homeGridOverlay.setGrid(homeCols, sp.getInt("launcher_home_grid_rows", 6));
         }
         if (drawerGridOverlay != null) {
             drawerGridOverlay.setGrid(drawerCols, 6);
@@ -288,7 +258,9 @@ public class ParallelHomeActivity extends Activity {
                 
                 // Cancel active animations to prevent overlay conflicts
                 drawerGridView.animate().cancel();
-                homeGridView.animate().cancel();
+                if (homeCellLayout != null) {
+                    homeCellLayout.animate().cancel();
+                }
                 
                 if (isHomeTab) {
                     initialTranslationY = screenHeight;
@@ -299,12 +271,12 @@ public class ParallelHomeActivity extends Activity {
                 // Check if touch down is on a non-empty app icon
                 isTouchDownOnIcon = false;
                 if (isHomeTab) {
-                    if (homeGridView != null) {
+                    if (homeCellLayout != null) {
                         int[] loc = new int[2];
-                        homeGridView.getLocationOnScreen(loc);
+                        homeCellLayout.getLocationOnScreen(loc);
                         int x = (int) (ev.getRawX() - loc[0]);
                         int y = (int) (ev.getRawY() - loc[1]);
-                        int position = homeGridView.pointToPosition(x, y);
+                        int position = homeCellLayout.pointToPosition(x, y);
                         if (position >= 0 && position < pinnedAppList.size()) {
                             AppItem item = pinnedAppList.get(position);
                             if (item != null && !item.isEmpty) {
@@ -370,9 +342,11 @@ public class ParallelHomeActivity extends Activity {
                     drawerGridView.setAlpha(progress);
                     
                     // Parallax: Scale down and fade out Home screen behind the drawer
-                    homeGridView.setAlpha(1.0f - (progress * 0.5f));
-                    homeGridView.setScaleX(1.0f - (progress * 0.05f));
-                    homeGridView.setScaleY(1.0f - (progress * 0.05f));
+                    if (homeCellLayout != null) {
+                        homeCellLayout.setAlpha(1.0f - (progress * 0.5f));
+                        homeCellLayout.setScaleX(1.0f - (progress * 0.05f));
+                        homeCellLayout.setScaleY(1.0f - (progress * 0.05f));
+                    }
                     
                     android.util.Log.d("ParallelHome", "Dragging: deltaY=" + deltaY + ", newTranslationY=" + newTranslationY + ", alpha=" + progress);
                     
@@ -468,37 +442,31 @@ public class ParallelHomeActivity extends Activity {
             })
             .start();
 
-        homeGridView.animate()
-            .alpha(targetHomeAlpha)
-            .scaleX(targetHomeScale)
-            .scaleY(targetHomeScale)
-            .setDuration(280)
-            .setInterpolator(new android.view.animation.DecelerateInterpolator())
-            .start();
+        if (homeCellLayout != null) {
+            homeCellLayout.animate()
+                .alpha(targetHomeAlpha)
+                .scaleX(targetHomeScale)
+                .scaleY(targetHomeScale)
+                .setDuration(280)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
+        }
     }
 
     private View buildLayout() {
         SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
         int homeCols = sp.getInt("launcher_home_grid_columns", 4);
+        int homeRows = sp.getInt("launcher_home_grid_rows", 6);
         int drawerCols = sp.getInt("launcher_drawer_grid_columns", 4);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.TRANSPARENT);
 
-        homeGridView = new GridView(this);
-        homeGridView.setNumColumns(homeCols);
-        homeGridView.setVerticalSpacing(dp(20));
-        homeGridView.setHorizontalSpacing(dp(10));
-        homeGridView.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
-        homeGridView.setVerticalScrollBarEnabled(false);
-        homeGridView.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        homeGridView.setPadding(dp(16), dp(16), dp(16), dp(16));
-        homeGridView.setClipToPadding(false);
-        root.addView(homeGridView, new FrameLayout.LayoutParams(-1, -1));
-
-        homeGridOverlay = new GridOverlayView(this);
-        homeGridOverlay.setPadding(dp(16), dp(16), dp(16), dp(16));
-        root.addView(homeGridOverlay, new FrameLayout.LayoutParams(-1, -1));
+        homeCellLayout = new HomeCellLayout(this);
+        homeCellLayout.setGridSize(homeCols, homeRows);
+        homeCellLayout.setPadding(dp(16), dp(16), dp(16), dp(16));
+        homeCellLayout.setClipToPadding(false);
+        root.addView(homeCellLayout, new FrameLayout.LayoutParams(-1, -1));
 
         drawerGridView = new GridView(this);
         drawerGridView.setNumColumns(drawerCols);
@@ -516,10 +484,6 @@ public class ParallelHomeActivity extends Activity {
         drawerGridView.setClipToPadding(false);
         drawerGridView.setVisibility(View.GONE);
         root.addView(drawerGridView, new FrameLayout.LayoutParams(-1, -1));
-
-        drawerGridOverlay = new GridOverlayView(this);
-        drawerGridOverlay.setPadding(dp(16), dp(24), dp(16), dp(16));
-        root.addView(drawerGridOverlay, new FrameLayout.LayoutParams(-1, -1));
 
         return root;
     }
@@ -639,12 +603,7 @@ public class ParallelHomeActivity extends Activity {
             android.util.Log.d("ParallelHome", "  Pin " + i + ": isEmpty=" + item.isEmpty + ", label=" + item.label + ", space=" + item.spaceNumber);
         }
 
-        if (homeAdapter == null) {
-            homeAdapter = new AppAdapter(pinnedAppList, true);
-            homeGridView.setAdapter(homeAdapter);
-        } else {
-            homeAdapter.notifyDataSetChanged();
-        }
+        notifyHomeDataSetChanged();
 
         if (drawerAdapter == null) {
             drawerAdapter = new AppAdapter(masterAppList, false);
@@ -951,7 +910,7 @@ public class ParallelHomeActivity extends Activity {
         return count != null ? count : 0;
     }
 
-    private static class AppItem {
+    static class AppItem {
         final String label;
         final ComponentName componentName;
         final Drawable icon;
@@ -1433,10 +1392,10 @@ public class ParallelHomeActivity extends Activity {
         placeholderPosition = position;
 
         isDraggingApp = true;
-        if (homeGridOverlay != null) {
-            homeGridOverlay.show();
+        if (homeCellLayout != null) {
+            homeCellLayout.showGridOverlay();
         }
-        homeAdapter.notifyDataSetChanged();
+        notifyHomeDataSetChanged();
 
         DragPayload payload = new DragPayload(position, false);
         ClipData data = ClipData.newPlainText("app_item", "");
@@ -1461,12 +1420,10 @@ public class ParallelHomeActivity extends Activity {
         placeholderPosition = AdapterView.INVALID_POSITION;
 
         isDraggingApp = true;
-        if (homeGridOverlay != null) {
-            homeGridOverlay.show();
+        if (homeCellLayout != null) {
+            homeCellLayout.showGridOverlay();
         }
-        if (homeAdapter != null) {
-            homeAdapter.notifyDataSetChanged();
-        }
+        notifyHomeDataSetChanged();
 
         DragPayload payload = new DragPayload(AdapterView.INVALID_POSITION, true);
         ClipData data = ClipData.newPlainText("app_item", "");
@@ -1478,17 +1435,15 @@ public class ParallelHomeActivity extends Activity {
         );
     }
 
-    private void movePlaceholderTo(int insertIndex) {
-        if (insertIndex == AdapterView.INVALID_POSITION) {
+    private void movePlaceholderTo(int targetIndex) {
+        if (targetIndex == AdapterView.INVALID_POSITION) {
             return;
         }
         if (dragBackupList == null || dragPlaceholder == null) {
             return;
         }
 
-        final java.util.Map<String, android.graphics.Rect> before = captureVisibleItemRects(homeGridView);
-
-        List<AppItem> preview = buildPreviewListFromBackup(insertIndex);
+        List<AppItem> preview = buildPreviewListFromBackup(targetIndex);
         if (preview.isEmpty()) {
             return;
         }
@@ -1497,14 +1452,10 @@ public class ParallelHomeActivity extends Activity {
         pinnedAppList.addAll(preview);
         placeholderPosition = pinnedAppList.indexOf(dragPlaceholder);
 
-        homeAdapter.notifyDataSetChanged();
-
-        homeGridView.post(new Runnable() {
-            @Override
-            public void run() {
-                animateChangedItemPositions(homeGridView, before);
-            }
-        });
+        notifyHomeDataSetChanged();
+        if (homeCellLayout != null) {
+            homeCellLayout.invalidate();
+        }
     }
 
     private void commitLauncherDrop() {
@@ -1544,7 +1495,7 @@ public class ParallelHomeActivity extends Activity {
         pinnedAppList.set(placeholderIndex, draggedApp);
 
         dragCommitted = true;
-        homeAdapter.notifyDataSetChanged();
+        notifyHomeDataSetChanged();
         saveLauncherOrder();
     }
 
@@ -1552,7 +1503,7 @@ public class ParallelHomeActivity extends Activity {
         if (dragBackupList != null) {
             pinnedAppList.clear();
             pinnedAppList.addAll(dragBackupList);
-            homeAdapter.notifyDataSetChanged();
+            notifyHomeDataSetChanged();
         }
     }
 
@@ -1565,15 +1516,10 @@ public class ParallelHomeActivity extends Activity {
         draggedFromDrawer = false;
         dragCommitted = false;
         isDraggingApp = false;
-        if (homeGridOverlay != null) {
-            homeGridOverlay.hide();
+        if (homeCellLayout != null) {
+            homeCellLayout.hideGridOverlay();
         }
-        if (drawerGridOverlay != null) {
-            drawerGridOverlay.hide();
-        }
-        if (homeAdapter != null) {
-            homeAdapter.notifyDataSetChanged();
-        }
+        notifyHomeDataSetChanged();
     }
 
     private void dismissActivePopup() {
@@ -1589,50 +1535,99 @@ public class ParallelHomeActivity extends Activity {
             return preview;
         }
 
+        int cols = 4;
+        SharedPreferences settingsSp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+        if (settingsSp != null) {
+            cols = settingsSp.getInt("launcher_home_grid_columns", 4);
+        }
+
+        int gridSize = dragBackupList.size();
+        if (insertIndex < 0 || insertIndex >= gridSize) {
+            return new ArrayList<>(dragBackupList);
+        }
+
+        for (AppItem item : dragBackupList) {
+            preview.add(item);
+        }
+
+        int vacantPos = -1;
         if (draggedFromDrawer) {
-            List<AppItem> temp = new ArrayList<>(dragBackupList);
-            int emptyIndex = -1;
-            for (int i = 0; i < temp.size(); i++) {
-                if (temp.get(i).isEmpty) {
-                    emptyIndex = i;
-                    break;
+            int bestDist = Integer.MAX_VALUE;
+            int insertRow = insertIndex / cols;
+            int insertCol = insertIndex % cols;
+
+            for (int i = 0; i < gridSize; i++) {
+                if (dragBackupList.get(i).isEmpty) {
+                    int r = i / cols;
+                    int c = i % cols;
+                    int dist = Math.abs(r - insertRow) + Math.abs(c - insertCol);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        vacantPos = i;
+                    }
                 }
             }
-            if (emptyIndex != -1) {
-                temp.remove(emptyIndex);
-            } else {
-                return temp;
+            if (vacantPos == -1) {
+                return preview;
             }
-
-            if (insertIndex < 0) {
-                insertIndex = 0;
-            }
-            if (insertIndex > temp.size()) {
-                insertIndex = temp.size();
-            }
-
-            temp.add(insertIndex, dragPlaceholder);
-            return temp;
         } else {
-            if (draggedPosition < 0 || draggedPosition >= dragBackupList.size()) {
-                return new ArrayList<>(dragBackupList);
+            vacantPos = draggedPosition;
+            if (vacantPos < 0 || vacantPos >= gridSize) {
+                return preview;
             }
-            List<AppItem> temp = new ArrayList<>(dragBackupList);
-            temp.remove(draggedPosition);
-
-            if (insertIndex < 0) {
-                insertIndex = 0;
-            }
-            if (insertIndex > temp.size()) {
-                insertIndex = temp.size();
-            }
-
-            temp.add(insertIndex, dragPlaceholder);
-            return temp;
         }
+
+        if (insertIndex == vacantPos) {
+            preview.set(insertIndex, dragPlaceholder);
+            return preview;
+        }
+
+        int toRow = insertIndex / cols;
+        int toCol = insertIndex % cols;
+        int fromRow = vacantPos / cols;
+        int fromCol = vacantPos % cols;
+
+        if (toRow == fromRow) {
+            if (insertIndex < vacantPos) {
+                for (int c = fromCol; c > toCol; c--) {
+                    int idx = toRow * cols + c;
+                    preview.set(idx, preview.get(idx - 1));
+                }
+            } else {
+                for (int c = fromCol; c < toCol; c++) {
+                    int idx = toRow * cols + c;
+                    preview.set(idx, preview.get(idx + 1));
+                }
+            }
+        } else if (toCol == fromCol) {
+            if (insertIndex < vacantPos) {
+                for (int r = fromRow; r > toRow; r--) {
+                    int idx = r * cols + toCol;
+                    preview.set(idx, preview.get((r - 1) * cols + toCol));
+                }
+            } else {
+                for (int r = fromRow; r < toRow; r++) {
+                    int idx = r * cols + toCol;
+                    preview.set(idx, preview.get((r + 1) * cols + toCol));
+                }
+            }
+        } else {
+            if (insertIndex < vacantPos) {
+                for (int i = vacantPos; i > insertIndex; i--) {
+                    preview.set(i, preview.get(i - 1));
+                }
+            } else {
+                for (int i = vacantPos; i < insertIndex; i++) {
+                    preview.set(i, preview.get(i + 1));
+                }
+            }
+        }
+
+        preview.set(insertIndex, dragPlaceholder);
+        return preview;
     }
 
-    private String getStableAnimationKey(AppItem item, int index) {
+    String getStableAnimationKey(AppItem item, int index) {
         if (item == null) {
             return "empty:" + index;
         }
@@ -1704,6 +1699,39 @@ public class ParallelHomeActivity extends Activity {
                         .start();
                 }
             }
+        }
+    }
+
+    public static int getPlaceholderPosition() {
+        if (sInstance != null) {
+            return sInstance.placeholderPosition;
+        }
+        return AdapterView.INVALID_POSITION;
+    }
+
+    public View createHomeItemView(AppItem item, int position, boolean isDragging) {
+        if (homeAdapter == null) {
+            homeAdapter = new AppAdapter(pinnedAppList, true);
+        }
+        return homeAdapter.getView(position, null, homeCellLayout);
+    }
+
+    public void updateHomeItemView(View childView, AppItem item, int position, boolean isDragging) {
+        if (homeAdapter == null) {
+            homeAdapter = new AppAdapter(pinnedAppList, true);
+        }
+        homeAdapter.getView(position, childView, homeCellLayout);
+    }
+
+    public void notifyHomeDataSetChanged() {
+        if (homeAdapter == null) {
+            homeAdapter = new AppAdapter(pinnedAppList, true);
+        }
+        if (homeCellLayout != null) {
+            SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
+            int homeCols = sp.getInt("launcher_home_grid_columns", 4);
+            int homeRows = sp.getInt("launcher_home_grid_rows", 6);
+            homeCellLayout.bindApps(pinnedAppList, homeCols, homeRows, isDraggingApp, this);
         }
     }
 }

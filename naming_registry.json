@@ -7,6 +7,7 @@
   },
   "classes": {
     "ParallelHomeActivity": "ink.kscope.parallelspace.ParallelHomeActivity",
+    "HomeCellLayout": "ink.kscope.parallelspace.HomeCellLayout",
     "BadgeIconRenderer": "ink.kscope.parallelspace.BadgeIconRenderer",
     "ParallelSpaceActivity": "ink.kscope.parallelspace.ParallelSpaceActivity"
   },
