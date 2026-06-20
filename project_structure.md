@@ -1,6 +1,6 @@
 # Project Structure: ParallelSpace Settings & Launcher Integration
 
-Dự án này tích hợp một Custom Launcher riêng (**ParallelHomeActivity**) trực tiếp vào ứng dụng quản lý clone **ParallelSpace.apk** chạy dưới dạng priv-app trên ROM `PixelNote9A12` (Android 12).
+Dự án này tích hợp một Custom Launcher riêng (**ParallelHomeActivity**, nhãn hiển thị **Mon Laucher**) trực tiếp vào ứng dụng quản lý clone **Mon Space** (`Mon.apk`) chạy dưới dạng priv-app trên ROM `PixelNote9A12` (Android 12).
 
 ## File Layout & Mô tả
 
@@ -16,9 +16,9 @@ Dự án này tích hợp một Custom Launcher riêng (**ParallelHomeActivity**
 * **[ids.xml](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/_parallel_a12_port_work/ParallelSpaceSettingsApp/res/values/ids.xml)**: Khai báo tag ID `tag_position` phục vụ việc gán tag vị trí các view icon ứng dụng trong Adapter để hỗ trợ tính năng kéo thả (drag & drop).
 
 ### 2. File APK trong ROM Tree
-* **[ParallelSpace.apk](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/system/system/system_ext/priv-app/ParallelSpace/ParallelSpace.apk)**: File APK hệ thống đã được biên dịch và ký số hoàn chỉnh, nạp trực tiếp vào phân vùng hệ thống của ROM (không được commit lên GitHub).
+* **[Mon.apk](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/system/system/system_ext/priv-app/Mon/Mon.apk)**: File APK hệ thống đã được biên dịch và ký số hoàn chỉnh, nạp trực tiếp vào phân vùng hệ thống của ROM (không được commit lên GitHub).
 
 ### 3. Patches & ROM Documentation
-* **[PATCH_INDEX.md](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/PATCH_INDEX.md)**: Chỉ mục lưu trữ tên file, checksum SHA256, path local, nguồn build và thiết bị kiểm thử của các file binary (như `services.jar`, `ParallelSpace.apk`, `boot.img`, `recovery.img`) để theo dõi mà không cần push file nặng lên GitHub.
+* **[PATCH_INDEX.md](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/PATCH_INDEX.md)**: Chỉ mục lưu trữ tên file, checksum SHA256, path local, nguồn build và thiết bị kiểm thử của các file binary (như `services.jar`, `Mon.apk`, `boot.img`, `recovery.img`) để theo dõi mà không cần push file nặng lên GitHub.
 * **[_parallel_a12_port_work/smali_patches/](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/_parallel_a12_port_work/smali_patches/)**: Thư mục chứa các bản vá mã nguồn dạng smali (cho `services.jar`, `framework.jar`, `service-appsearch.jar`) và cấu hình XML phân quyền hệ thống phục vụ việc đọc hiểu code trực quan trên GitHub.
 

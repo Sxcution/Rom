@@ -27,9 +27,11 @@ Tài liệu này lưu trữ dấu vết của các file binary đã build và fl
 * **Thiết bị đã flash**: `262bba890d037ece` (Google Pixel 4a)
 * **Ngày giờ test**: 2026-06-20
 
-### 3. ParallelSpace.apk
-* **Tên file binary local**: `ParallelSpace.apk`
-* **Local path**: `C:\Users\Mon\Desktop\Mod Android\Mod Android\MIO-KITCHEN\PixelNote9A12\system\system\system_ext\priv-app\ParallelSpace\ParallelSpace.apk`
+### 3. Mon.apk
+* **Tên file binary local**: `Mon.apk`
+* **Local path**: `C:\Users\Mon\Desktop\Mod Android\Mod Android\MIO-KITCHEN\PixelNote9A12\system\system\system_ext\priv-app\Mon\Mon.apk`
+* **Package Android giữ nguyên**: `ink.kscope.parallelspace`
+* **Tên hiển thị**: `Mon Space`; Home/launcher label: `Mon Laucher`
 * **SHA256**: `514892b2b8b0c347544d42891bc739a968adccead29fea2442f4972ccadcc966`
 * **Nguồn build (Source/Patches)**: Source code Java và Resource tại `_parallel_a12_port_work/ParallelSpaceSettingsApp/` biên dịch bằng script `build.py`.
 * **Thiết bị đã flash**: `262bba890d037ece` (Google Pixel 4a)

@@ -36,7 +36,8 @@ COMPILED_RES_ZIP = os.path.join(BUILD_DIR, "compiled_res.zip")
 UNSIGNED_APK = os.path.join(OUT_DIR, "unsigned.apk")
 SIGNED_APK = os.path.join(OUT_DIR, "signed.apk")
 ALIGNED_APK = os.path.join(OUT_DIR, "aligned.apk")
-FINAL_APK = os.path.join(WORKSPACE_DIR, "ParallelSpace.apk")
+FINAL_APK = os.path.join(WORKSPACE_DIR, "Mon.apk")
+LEGACY_APK = os.path.join(WORKSPACE_DIR, "ParallelSpace.apk")
 
 def clean():
     print("[*] Cleaning build directories...")
@@ -46,8 +47,9 @@ def clean():
     os.makedirs(DEX_DIR, exist_ok=True)
     os.makedirs(GEN_DIR, exist_ok=True)
     os.makedirs(OUT_DIR, exist_ok=True)
-    if os.path.exists(FINAL_APK):
-        os.remove(FINAL_APK)
+    for apk in (FINAL_APK, LEGACY_APK):
+        if os.path.exists(apk):
+            os.remove(apk)
 
 def run_cmd(args, shell=False):
     print("[*] Running:", " ".join(args))

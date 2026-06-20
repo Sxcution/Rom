@@ -1,6 +1,6 @@
 # Walkthrough - Parallel Space Custom Launcher Integration
 
-Dự án tích hợp màn hình chính riêng (**ParallelHomeActivity**) vào **ParallelSpace.apk** đã được hoàn tất thành công và xác thực hoạt động ổn định trên thiết bị `262bba890d037ece`.
+Dự án tích hợp màn hình chính riêng (**ParallelHomeActivity**, nhãn hiển thị **Mon Laucher**) vào **Mon.apk** / **Mon Space** đã được hoàn tất thành công và xác thực hoạt động ổn định trên thiết bị `262bba890d037ece`.
 
 ## Những công việc đã thực hiện
 
@@ -13,12 +13,12 @@ Dự án tích hợp màn hình chính riêng (**ParallelHomeActivity**) vào **
 * **[build.py](file:///C:/Users/Mon/Desktop/Mod%20Android/Mod%20Android/MIO-KITCHEN/PixelNote9A12/_parallel_a12_port_work/ParallelSpaceSettingsApp/build.py)**:
   * Loại bỏ tham số `--flat-files` lỗi thời và sửa `-java` thành `--java` để tương thích với `aapt2 link` bản mới.
   * Cấu hình biên dịch chạy qua JDK đi kèm của Android Studio (JBR - Java 17/21) tại `C:\Program Files\Android\Android Studio\jbr\bin\java.exe` để xử lý triệt để lỗi không tương thích phiên bản byte-code (`UnsupportedClassVersionError` khi chạy D8).
-  * Build thành công ra file APK đã được căn chỉnh và ký số tại `ParallelSpace.apk`.
+  * Build thành công ra file APK đã được căn chỉnh và ký số tại `Mon.apk`.
 
 ### 3. Triển khai & Xác thực thực tế trên thiết bị (`262bba890d037ece`)
 1. Gỡ bỏ phiên bản cập nhật thừa của ParallelSpace bằng cách chạy `pm uninstall ink.kscope.parallelspace` để hoàn trả app về dạng system app gốc.
-2. Khởi động thiết bị vào **TWRP Recovery**, mount phân vùng hệ thống (`/system_root`), nạp file `ParallelSpace.apk` mới vào:
-   `/system_root/system/system_ext/priv-app/ParallelSpace/ParallelSpace.apk`
+2. Khởi động thiết bị vào **TWRP Recovery**, mount phân vùng hệ thống (`/system_root`), nạp file `Mon.apk` mới vào:
+   `/system_root/system/system_ext/priv-app/Mon/Mon.apk`
    Đồng thời phân quyền chmod `644`.
 3. Reboot lại vào Android bình thường.
 4. Đặt launcher mặc định sang ứng dụng tích hợp mới:

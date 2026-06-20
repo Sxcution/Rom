@@ -89,7 +89,7 @@ public class ParallelSpaceActivity extends Activity {
         headerContainer.setPadding(dp(4), 0, dp(4), dp(8));
 
         titleView = new TextView(this);
-        titleView.setText("Parallel Space");
+        titleView.setText("Mon Space");
         titleView.setTextColor(Color.rgb(238, 238, 238));
         titleView.setTextSize(20);
         titleView.setTypeface(Typeface.DEFAULT_BOLD);

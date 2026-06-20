@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Parallel Space</string>
-    <string name="settings_summary">Clone apps for parallel users</string>
+    <string name="app_name">Mon Space</string>
+    <string name="launcher_app_name">Mon Laucher</string>
+    <string name="notification_listener_name">Mon Space Notification Listener</string>
+    <string name="settings_summary">Clone apps for Mon Space users</string>
 </resources>
