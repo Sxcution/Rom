@@ -92,12 +92,7 @@ public class ParallelHomeActivity extends Activity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (position >= 0 && position < pinnedAppList.size()) {
                     AppItem item = pinnedAppList.get(position);
-                    if (item.isEmpty) return;
-                    try {
-                        launcherApps.startMainActivity(item.componentName, item.userHandle, null, null);
-                    } catch (Throwable t) {
-                        Toast.makeText(ParallelHomeActivity.this, "Failed to launch: " + item.label, Toast.LENGTH_SHORT).show();
-                    }
+                    launchAppItem(item);
                 }
             }
         });
@@ -107,11 +102,7 @@ public class ParallelHomeActivity extends Activity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (position >= 0 && position < masterAppList.size()) {
                     AppItem item = masterAppList.get(position);
-                    try {
-                        launcherApps.startMainActivity(item.componentName, item.userHandle, null, null);
-                    } catch (Throwable t) {
-                        Toast.makeText(ParallelHomeActivity.this, "Failed to launch: " + item.label, Toast.LENGTH_SHORT).show();
-                    }
+                    launchAppItem(item);
                 }
             }
         });
@@ -417,6 +408,20 @@ public class ParallelHomeActivity extends Activity {
                 break;
         }
         return super.dispatchTouchEvent(ev);
+    }
+
+    private void launchAppItem(AppItem item) {
+        if (item == null || item.isEmpty || isPlaceholder(item) || item.componentName == null || item.userHandle == null) {
+            return;
+        }
+
+        try {
+            android.util.Log.d("ParallelHome", "launchAppItem: " + item.componentName.flattenToShortString() + " space=" + item.spaceNumber);
+            launcherApps.startMainActivity(item.componentName, item.userHandle, null, null);
+        } catch (Throwable t) {
+            android.util.Log.e("ParallelHome", "Failed to launch: " + item.label, t);
+            Toast.makeText(ParallelHomeActivity.this, "Failed to launch: " + item.label, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private boolean isGridViewScrolledToTop(GridView gridView) {
@@ -1152,12 +1157,14 @@ public class ParallelHomeActivity extends Activity {
                 layout.setBackground(null);
                 iconContainer.setVisibility(View.INVISIBLE);
                 textView.setVisibility(View.INVISIBLE);
+                layout.setOnClickListener(null);
                 layout.setOnLongClickListener(null);
                 return layout;
             }
             layout.setAlpha(1.0f);
 
             if (item.isEmpty) {
+                layout.setOnClickListener(null);
                 layout.setOnLongClickListener(null);
                 if (isHome && isDraggingApp) {
                     android.graphics.drawable.GradientDrawable dot = new android.graphics.drawable.GradientDrawable();
@@ -1171,6 +1178,12 @@ public class ParallelHomeActivity extends Activity {
                 iconContainer.setVisibility(View.INVISIBLE);
                 textView.setVisibility(View.INVISIBLE);
             } else {
+                layout.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        launchAppItem(item);
+                    }
+                });
                 layout.setOnLongClickListener(new View.OnLongClickListener() {
                     @Override
                     public boolean onLongClick(View v) {

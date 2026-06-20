@@ -30,7 +30,6 @@ public class ClonePolicy {
         BLOCKED_TRASH_PACKAGES.add("com.google.android.apps.searchlite"); // Google Go
         BLOCKED_TRASH_PACKAGES.add("com.google.android.googlequicksearchbox"); // Google
         BLOCKED_TRASH_PACKAGES.add("com.google.android.apps.nexuslauncher"); // Pixel Launcher
-        BLOCKED_TRASH_PACKAGES.add("com.android.vending"); // Play Store
         BLOCKED_TRASH_PACKAGES.add("com.google.android.apps.safetyhub");
         BLOCKED_TRASH_PACKAGES.add("com.google.android.apps.recorder");
         BLOCKED_TRASH_PACKAGES.add("com.google.android.deskclock");
