@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import org.json.JSONArray;
 
 public class ParallelHomeActivity extends Activity {
     private static final String DESCRIPTOR = "ink.kaleidoscope.IParallelSpaceManager";
@@ -65,8 +66,13 @@ public class ParallelHomeActivity extends Activity {
     private boolean isDragging = false;
     private int touchSlop = 0;
 
-    private AppItem draggedFromDrawer = null;
-    private int draggedPosition = -1;
+    private List<AppItem> dragBackupList;
+    private AppItem draggedApp;
+    private AppItem dragPlaceholder;
+    private int draggedPosition = AdapterView.INVALID_POSITION;
+    private int placeholderPosition = AdapterView.INVALID_POSITION;
+    private boolean dragCommitted = false;
+    private boolean draggedFromDrawer = false;
     private android.widget.PopupWindow activePopup;
     private boolean isDraggingApp = false;
     private boolean isTouchDownOnIcon = false;
@@ -74,6 +80,7 @@ public class ParallelHomeActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
         sInstance = this;
         launcherApps = (LauncherApps) getSystemService(Context.LAUNCHER_APPS_SERVICE);
         parallelService = getService(SERVICE_NAME);
@@ -109,146 +116,43 @@ public class ParallelHomeActivity extends Activity {
             }
         });
 
-        homeGridView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                if (position >= 0 && position < pinnedAppList.size()) {
-                    AppItem item = pinnedAppList.get(position);
-                    if (item.isEmpty) return false;
-                    draggedFromDrawer = null;
-                    draggedPosition = position;
-                    isDraggingApp = true;
-                    
-                    showPopupMenu(view, item, true);
-                    
-                    ClipData data = ClipData.newPlainText("app_item", "");
-                    View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(view);
-                    view.startDragAndDrop(data, shadowBuilder, null, 0);
-                }
-                return true;
-            }
-        });
-
-        drawerGridView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                if (position >= 0 && position < masterAppList.size()) {
-                    AppItem item = masterAppList.get(position);
-                    draggedFromDrawer = item;
-                    draggedPosition = -1;
-                    isDraggingApp = true;
-                    
-                    showPopupMenu(view, item, false);
-                    
-                    ClipData data = ClipData.newPlainText("app_item", "");
-                    View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(view);
-                    view.startDragAndDrop(data, shadowBuilder, null, 0);
-                }
-                return true;
-            }
-        });
-
         homeGridView.setOnDragListener(new View.OnDragListener() {
             @Override
             public boolean onDrag(View v, DragEvent event) {
-                int x = (int) event.getX();
-                int y = (int) event.getY();
-                
                 SharedPreferences settingsSp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
                 int homeCols = settingsSp.getInt("launcher_home_grid_columns", 4);
-                int homeRows = settingsSp.getInt("launcher_home_grid_rows", 6);
-                
-                int targetPosition = getGridPositionFromCoords(x, y, homeCols, homeRows, homeGridView);
 
                 switch (event.getAction()) {
                     case DragEvent.ACTION_DRAG_STARTED:
-                        android.util.Log.d("ParallelHome", "onDrag: ACTION_DRAG_STARTED");
-                        isDraggingApp = true;
-                        homeAdapter.notifyDataSetChanged();
+                        dismissActivePopup();
                         return true;
-                        
+
                     case DragEvent.ACTION_DRAG_LOCATION:
-                        // Limit logs to avoid spam
-                        if (Math.random() < 0.1) {
-                            android.util.Log.d("ParallelHome", "onDrag: ACTION_DRAG_LOCATION x=" + x + ", y=" + y + ", targetPosition=" + targetPosition);
-                        }
-                        if (activePopup != null) {
-                            activePopup.dismiss();
-                        }
+                    case DragEvent.ACTION_DRAG_ENTERED:
+                        dismissActivePopup();
+                        int insertIndex = getInsertIndexFromCoords(
+                                (int) event.getX(),
+                                (int) event.getY(),
+                                homeCols,
+                                homeGridView
+                        );
+                        movePlaceholderTo(insertIndex);
                         return true;
-                        
+
                     case DragEvent.ACTION_DROP:
-                        android.util.Log.d("ParallelHome", "onDrag: ACTION_DROP targetPosition=" + targetPosition + ", draggedPosition=" + draggedPosition + ", draggedFromDrawer=" + (draggedFromDrawer != null ? draggedFromDrawer.label : "null"));
-                        if (targetPosition == AdapterView.INVALID_POSITION) {
-                            android.util.Log.d("ParallelHome", "onDrag: Drop target position is INVALID_POSITION");
-                            return false;
-                        }
-                        
-                        if (draggedFromDrawer != null) {
-                            AppItem item = draggedFromDrawer;
-                            String key = item.componentName.getPackageName() + "/" + item.spaceNumber;
-                            
-                            boolean alreadyPinned = false;
-                            for (AppItem pi : pinnedAppList) {
-                                if (!pi.isEmpty) {
-                                    String piKey = pi.componentName.getPackageName() + "/" + pi.spaceNumber;
-                                    if (piKey.equals(key)) {
-                                        alreadyPinned = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            if (alreadyPinned) {
-                                Toast.makeText(ParallelHomeActivity.this, item.label + " đã được ghim từ trước!", Toast.LENGTH_SHORT).show();
-                            } else {
-                                if (targetPosition >= 0 && targetPosition < pinnedAppList.size()) {
-                                    AppItem oldItem = pinnedAppList.get(targetPosition);
-                                    pinnedAppList.set(targetPosition, item);
-                                    if (oldItem != null && !oldItem.isEmpty) {
-                                        // Move oldItem to the first empty cell
-                                        for (int i = 0; i < pinnedAppList.size(); i++) {
-                                            if (pinnedAppList.get(i).isEmpty) {
-                                                pinnedAppList.set(i, oldItem);
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    saveHomePins();
-                                    loadApps();
-                                    Toast.makeText(ParallelHomeActivity.this, "Đã ghim " + item.label + " vào màn hình chính", Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                        } else if (draggedPosition != -1) {
-                            if (targetPosition != draggedPosition) {
-                                if (targetPosition >= 0 && targetPosition < pinnedAppList.size()) {
-                                    AppItem temp = pinnedAppList.get(targetPosition);
-                                    AppItem dragItem = pinnedAppList.get(draggedPosition);
-                                    
-                                    android.util.Log.d("ParallelHome", "onDrag: Swapping " + (dragItem != null ? dragItem.label : "null") + " at " + draggedPosition + " with " + (temp != null ? temp.label : "null") + " at " + targetPosition);
-                                    android.util.Log.d("ParallelHome", "onDrag: BEFORE set: 0=" + pinnedAppList.get(0).label + " (empty=" + pinnedAppList.get(0).isEmpty + "), 1=" + pinnedAppList.get(1).label + " (empty=" + pinnedAppList.get(1).isEmpty + ")");
-                                    
-                                    pinnedAppList.set(targetPosition, dragItem);
-                                    pinnedAppList.set(draggedPosition, temp);
-                                    
-                                    android.util.Log.d("ParallelHome", "onDrag: AFTER set: 0=" + pinnedAppList.get(0).label + " (empty=" + pinnedAppList.get(0).isEmpty + "), 1=" + pinnedAppList.get(1).label + " (empty=" + pinnedAppList.get(1).isEmpty + ")");
-                                    
-                                    saveHomePins();
-                                    loadApps();
-                                }
-                            }
-                        }
+                        commitLauncherDrop();
                         return true;
-                        
+
                     case DragEvent.ACTION_DRAG_ENDED:
-                        android.util.Log.d("ParallelHome", "onDrag: ACTION_DRAG_ENDED");
-                        isDraggingApp = false;
-                        draggedFromDrawer = null;
-                        draggedPosition = -1;
-                        homeAdapter.notifyDataSetChanged();
+                        if (!dragCommitted) {
+                            cancelLauncherDrop();
+                        }
+                        clearDragState();
+                        return true;
+
+                    default:
                         return true;
                 }
-                return false;
             }
         });
 
@@ -257,6 +161,7 @@ public class ParallelHomeActivity extends Activity {
             public boolean onDrag(View v, DragEvent event) {
                 switch (event.getAction()) {
                     case DragEvent.ACTION_DRAG_STARTED:
+                        dismissActivePopup();
                         return true;
                     case DragEvent.ACTION_DRAG_LOCATION:
                         if (activePopup != null) {
@@ -564,7 +469,7 @@ public class ParallelHomeActivity extends Activity {
         int drawerCols = sp.getInt("launcher_drawer_grid_columns", 4);
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
+        root.setBackgroundColor(Color.TRANSPARENT);
         root.setPadding(dp(16), dp(16), dp(16), dp(16));
 
         homeGridView = new GridView(this);
@@ -581,7 +486,7 @@ public class ParallelHomeActivity extends Activity {
         drawerGridView.setVerticalSpacing(dp(20));
         drawerGridView.setHorizontalSpacing(dp(10));
         drawerGridView.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
-        drawerGridView.setBackgroundColor(Color.BLACK);
+        drawerGridView.setBackgroundColor(Color.parseColor("#E6000000")); // 90% semi-transparent black for premium drawer overlay
         drawerGridView.setVisibility(View.GONE);
         root.addView(drawerGridView, new FrameLayout.LayoutParams(-1, -1));
 
@@ -718,15 +623,105 @@ public class ParallelHomeActivity extends Activity {
         }
     }
 
+    private String makeAppKey(AppItem app) {
+        if (app == null || app.isEmpty || app.componentName == null) {
+            return "";
+        }
+        return app.componentName.getPackageName() + "|" + app.componentName.getClassName() + "|" + getUserIdForSpace(app.spaceNumber);
+    }
+
+    private void saveLauncherOrder() {
+        JSONArray array = new JSONArray();
+        List<String> legacyKeys = new ArrayList<>();
+
+        for (AppItem app : pinnedAppList) {
+            if (!isPlaceholder(app)) {
+                array.put(makeAppKey(app));
+                if (app.isEmpty) {
+                    legacyKeys.add("");
+                } else {
+                    legacyKeys.add(app.componentName.getPackageName() + "/" + app.spaceNumber);
+                }
+            }
+        }
+
+        getSharedPreferences("launcher_order", MODE_PRIVATE)
+                .edit()
+                .putString("home_order", array.toString())
+                .apply();
+
+        savePinnedKeys(legacyKeys);
+    }
+
+    private int getSpaceNumberForUserId(int userId) {
+        if (userId == 0) {
+            return 0;
+        }
+        List<Integer> cloneUserIds = readSpacesUserIds();
+        Collections.sort(cloneUserIds);
+        for (int i = 0; i < cloneUserIds.size(); i++) {
+            if (cloneUserIds.get(i) == userId) {
+                return i + 1;
+            }
+        }
+        return -1;
+    }
+
+    private void saveHomePins() {
+        saveLauncherOrder();
+    }
+
+    private void savePinnedKeys(List<String> keys) {
+        SharedPreferences sp = getSharedPreferences("parallel_home_pins", Context.MODE_PRIVATE);
+        StringBuilder sb = new StringBuilder();
+        for (String k : keys) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(k);
+        }
+        String serialized = sb.toString();
+        android.util.Log.d("ParallelHome", "savePinnedKeys: saving pins = " + serialized);
+        sp.edit().putString("pins", serialized).apply();
+    }
+
     private List<String> getPinnedKeys() {
         return getPinnedKeysList();
     }
 
     private List<String> getPinnedKeysList() {
+        List<String> list = new ArrayList<>();
+        SharedPreferences spOrder = getSharedPreferences("launcher_order", Context.MODE_PRIVATE);
+        String jsonStr = spOrder.getString("home_order", null);
+        if (jsonStr != null && !jsonStr.trim().isEmpty()) {
+            try {
+                JSONArray arr = new JSONArray(jsonStr);
+                for (int i = 0; i < arr.length(); i++) {
+                    String key = arr.optString(i, "");
+                    if (key.isEmpty()) {
+                        list.add("");
+                    } else {
+                        String[] parts = key.split("\\|", -1);
+                        if (parts.length >= 3) {
+                            String pkg = parts[0];
+                            int userId = 0;
+                            try {
+                                userId = Integer.parseInt(parts[2]);
+                            } catch (Exception e) {}
+                            int spaceNum = getSpaceNumberForUserId(userId);
+                            list.add(pkg + "/" + spaceNum);
+                        } else {
+                            list.add("");
+                        }
+                    }
+                }
+                return list;
+            } catch (Exception e) {
+                android.util.Log.e("ParallelHome", "Error parsing launcher_order: " + e.getMessage());
+            }
+        }
+
         SharedPreferences sp = getSharedPreferences("parallel_home_pins", Context.MODE_PRIVATE);
         String raw = sp.getString("pins", null);
         android.util.Log.d("ParallelHome", "getPinnedKeysList: read raw pins = " + raw);
-        List<String> list = new ArrayList<>();
         if (raw == null || raw.trim().isEmpty()) {
             android.util.Log.d("ParallelHome", "getPinnedKeysList: raw pins is empty or null, loading defaults");
             String[] defaults = {
@@ -742,30 +737,6 @@ public class ParallelHomeActivity extends Activity {
             list.add(p.trim());
         }
         return list;
-    }
-
-    private void saveHomePins() {
-        List<String> keys = new ArrayList<>();
-        for (AppItem item : pinnedAppList) {
-            if (item.isEmpty) {
-                keys.add("");
-            } else {
-                keys.add(item.componentName.getPackageName() + "/" + item.spaceNumber);
-            }
-        }
-        savePinnedKeys(keys);
-    }
-
-    private void savePinnedKeys(List<String> keys) {
-        SharedPreferences sp = getSharedPreferences("parallel_home_pins", Context.MODE_PRIVATE);
-        StringBuilder sb = new StringBuilder();
-        for (String k : keys) {
-            if (sb.length() > 0) sb.append(",");
-            sb.append(k);
-        }
-        String serialized = sb.toString();
-        android.util.Log.d("ParallelHome", "savePinnedKeys: saving pins = " + serialized);
-        sp.edit().putString("pins", serialized).apply();
     }
 
     private List<Integer> readSpacesUserIds() {
@@ -842,42 +813,95 @@ public class ParallelHomeActivity extends Activity {
         }
     }
 
-    private int getGridPositionFromCoords(int x, int y, int cols, int rows, GridView gridView) {
-        if (gridView == null || cols <= 0 || rows <= 0) {
+    private int getInsertIndexFromCoords(int x, int y, int columns, GridView gridView) {
+        if (gridView == null || gridView.getAdapter() == null) {
             return AdapterView.INVALID_POSITION;
         }
-        int w = gridView.getWidth();
-        int h = gridView.getHeight();
-        if (w <= 0 || h <= 0) {
+
+        int itemCount = gridView.getAdapter().getCount();
+        if (itemCount <= 0) {
+            return 0;
+        }
+
+        int actualColumns = gridView.getNumColumns();
+        if (actualColumns > 0 && actualColumns != GridView.AUTO_FIT) {
+            columns = actualColumns;
+        }
+
+        if (columns <= 0) {
             return AdapterView.INVALID_POSITION;
         }
-        
-        int pl = gridView.getPaddingLeft();
-        int pr = gridView.getPaddingRight();
-        int pt = gridView.getPaddingTop();
-        int pb = gridView.getPaddingBottom();
-        
-        int usableW = w - pl - pr;
-        int usableH = h - pt - pb;
-        
-        if (usableW <= 0 || usableH <= 0) {
+
+        int columnWidth = gridView.getColumnWidth();
+        int horizontalSpacing = gridView.getHorizontalSpacing();
+        int verticalSpacing = gridView.getVerticalSpacing();
+
+        View firstChild = gridView.getChildAt(0);
+        if (firstChild == null || columnWidth <= 0 || firstChild.getHeight() <= 0) {
             return AdapterView.INVALID_POSITION;
         }
-        
-        int col = (x - pl) * cols / usableW;
-        int row = (y - pt) * rows / usableH;
-        
-        if (col < 0) col = 0;
-        if (col >= cols) col = cols - 1;
-        if (row < 0) row = 0;
-        if (row >= rows) row = rows - 1;
-        
-        int pos = row * cols + col;
-        if (pos < 0) pos = 0;
-        int maxPos = cols * rows - 1;
-        if (pos > maxPos) pos = maxPos;
-        
-        return pos;
+
+        int rowHeight = firstChild.getHeight();
+        int cellStepX = columnWidth + horizontalSpacing;
+        int cellStepY = rowHeight + verticalSpacing;
+
+        if (cellStepX <= 0 || cellStepY <= 0) {
+            return AdapterView.INVALID_POSITION;
+        }
+
+        int localX = x - gridView.getPaddingLeft();
+        if (localX < 0) {
+            return AdapterView.INVALID_POSITION;
+        }
+
+        int col = localX / cellStepX;
+        if (col < 0) {
+            return AdapterView.INVALID_POSITION;
+        }
+
+        if (col >= columns) {
+            col = columns - 1;
+        }
+
+        int colStart = col * cellStepX;
+        int insideCellX = localX - colStart;
+
+        int firstVisiblePosition = gridView.getFirstVisiblePosition();
+        int firstVisibleRow = firstVisiblePosition / columns;
+
+        int firstRowTop = firstChild.getTop();
+        int localY = y - firstRowTop;
+
+        if (localY < 0) {
+            return AdapterView.INVALID_POSITION;
+        }
+
+        int rowOffset = localY / cellStepY;
+        int targetRow = firstVisibleRow + rowOffset;
+
+        int targetPosition = targetRow * columns + col;
+
+        if (targetPosition < 0) {
+            return AdapterView.INVALID_POSITION;
+        }
+
+        if (targetPosition > itemCount) {
+            targetPosition = itemCount;
+        }
+
+        boolean insertAfter = insideCellX > (columnWidth / 2);
+
+        int insertIndex = insertAfter ? targetPosition + 1 : targetPosition;
+
+        if (insertIndex < 0) {
+            insertIndex = 0;
+        }
+
+        if (insertIndex > itemCount) {
+            insertIndex = itemCount;
+        }
+
+        return insertIndex;
     }
 
     private int dp(int val) {
@@ -1121,7 +1145,20 @@ public class ParallelHomeActivity extends Activity {
             textLp.topMargin = textMarginTop;
             textView.setLayoutParams(textLp);
 
+            layout.setTag(R.id.tag_position, pos);
+
+            if (isPlaceholder(item)) {
+                layout.setAlpha(0.25f);
+                layout.setBackground(null);
+                iconContainer.setVisibility(View.INVISIBLE);
+                textView.setVisibility(View.INVISIBLE);
+                layout.setOnLongClickListener(null);
+                return layout;
+            }
+            layout.setAlpha(1.0f);
+
             if (item.isEmpty) {
+                layout.setOnLongClickListener(null);
                 if (isHome && isDraggingApp) {
                     android.graphics.drawable.GradientDrawable dot = new android.graphics.drawable.GradientDrawable();
                     dot.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
@@ -1134,6 +1171,22 @@ public class ParallelHomeActivity extends Activity {
                 iconContainer.setVisibility(View.INVISIBLE);
                 textView.setVisibility(View.INVISIBLE);
             } else {
+                layout.setOnLongClickListener(new View.OnLongClickListener() {
+                    @Override
+                    public boolean onLongClick(View v) {
+                        Object tag = v.getTag(R.id.tag_position);
+                        if (!(tag instanceof Integer)) {
+                            return true;
+                        }
+                        int position = (Integer) tag;
+                        if (isHome) {
+                            beginHomeIconDrag(v, position);
+                        } else {
+                            beginDrawerIconDrag(v, item);
+                        }
+                        return true;
+                    }
+                });
                 layout.setBackground(null);
                 iconContainer.setVisibility(View.VISIBLE);
                 iconView.setVisibility(View.VISIBLE);
@@ -1186,14 +1239,17 @@ public class ParallelHomeActivity extends Activity {
                 switch (event.getAction()) {
                     case DragEvent.ACTION_DRAG_STARTED:
                         return true;
+
                     case DragEvent.ACTION_DRAG_ENTERED:
                     case DragEvent.ACTION_DRAG_LOCATION:
-                        if (activePopup != null) {
-                            activePopup.dismiss();
-                        }
+                    case DragEvent.ACTION_DROP:
+                    case DragEvent.ACTION_DRAG_ENDED:
+                        dismissActivePopup();
+                        return true;
+
+                    default:
                         return true;
                 }
-                return false;
             }
         });
 
@@ -1327,5 +1383,212 @@ public class ParallelHomeActivity extends Activity {
         SharedPreferences sp = getSharedPreferences("launcher_settings", Context.MODE_PRIVATE);
         String key = "custom_label_" + item.componentName.getPackageName() + "_" + item.spaceNumber;
         sp.edit().putString(key, label).apply();
+    }
+
+    private static class DragPayload {
+        final int fromPosition;
+        final boolean fromDrawer;
+
+        DragPayload(int fromPosition, boolean fromDrawer) {
+            this.fromPosition = fromPosition;
+            this.fromDrawer = fromDrawer;
+        }
+    }
+
+    private AppItem createPlaceholderEntry() {
+        return new AppItem(
+            "",
+            new ComponentName("__placeholder__", "__placeholder__"),
+            null,
+            null,
+            -999,
+            false
+        );
+    }
+
+    private boolean isPlaceholder(AppItem app) {
+        return app != null && app.componentName != null && "__placeholder__".equals(app.componentName.getPackageName());
+    }
+
+    private void beginHomeIconDrag(View itemView, int position) {
+        dismissActivePopup();
+
+        if (position < 0 || position >= pinnedAppList.size()) {
+            return;
+        }
+
+        draggedFromDrawer = false;
+        dragCommitted = false;
+        draggedPosition = position;
+
+        dragBackupList = new ArrayList<>(pinnedAppList);
+        draggedApp = pinnedAppList.get(position);
+        dragPlaceholder = createPlaceholderEntry();
+
+        pinnedAppList.set(position, dragPlaceholder);
+        placeholderPosition = position;
+
+        homeAdapter.notifyDataSetChanged();
+
+        DragPayload payload = new DragPayload(position, false);
+        ClipData data = ClipData.newPlainText("app_item", "");
+        itemView.startDragAndDrop(
+                data,
+                new View.DragShadowBuilder(itemView),
+                payload,
+                0
+        );
+    }
+
+    private void beginDrawerIconDrag(View itemView, AppItem item) {
+        dismissActivePopup();
+
+        draggedFromDrawer = true;
+        dragCommitted = false;
+        draggedPosition = AdapterView.INVALID_POSITION;
+
+        dragBackupList = new ArrayList<>(pinnedAppList);
+        draggedApp = item;
+        dragPlaceholder = createPlaceholderEntry();
+        placeholderPosition = AdapterView.INVALID_POSITION;
+
+        DragPayload payload = new DragPayload(AdapterView.INVALID_POSITION, true);
+        ClipData data = ClipData.newPlainText("app_item", "");
+        itemView.startDragAndDrop(
+                data,
+                new View.DragShadowBuilder(itemView),
+                payload,
+                0
+        );
+    }
+
+    private void movePlaceholderTo(int insertIndex) {
+        if (insertIndex == AdapterView.INVALID_POSITION) {
+            return;
+        }
+
+        if (dragPlaceholder == null) {
+            return;
+        }
+
+        int oldIndex = pinnedAppList.indexOf(dragPlaceholder);
+        if (oldIndex == -1) {
+            // Dragging from drawer, placeholder is not in pinnedAppList yet.
+            // Remove the first empty slot to maintain grid size before inserting placeholder.
+            int emptyIndex = -1;
+            for (int i = 0; i < pinnedAppList.size(); i++) {
+                if (pinnedAppList.get(i).isEmpty) {
+                    emptyIndex = i;
+                    break;
+                }
+            }
+            if (emptyIndex != -1) {
+                pinnedAppList.remove(emptyIndex);
+            } else {
+                // Home is full, do not allow drag-in
+                return;
+            }
+
+            if (insertIndex < 0) {
+                insertIndex = 0;
+            }
+            if (insertIndex > pinnedAppList.size()) {
+                insertIndex = pinnedAppList.size();
+            }
+            pinnedAppList.add(insertIndex, dragPlaceholder);
+            placeholderPosition = insertIndex;
+            homeAdapter.notifyDataSetChanged();
+            return;
+        }
+
+        pinnedAppList.remove(oldIndex);
+
+        if (oldIndex < insertIndex) {
+            insertIndex--;
+        }
+
+        if (insertIndex < 0) {
+            insertIndex = 0;
+        }
+
+        if (insertIndex > pinnedAppList.size()) {
+            insertIndex = pinnedAppList.size();
+        }
+
+        if (insertIndex == oldIndex) {
+            pinnedAppList.add(oldIndex, dragPlaceholder);
+            return;
+        }
+
+        pinnedAppList.add(insertIndex, dragPlaceholder);
+        placeholderPosition = insertIndex;
+
+        homeAdapter.notifyDataSetChanged();
+    }
+
+    private void commitLauncherDrop() {
+        if (draggedApp == null || dragPlaceholder == null) {
+            return;
+        }
+
+        int placeholderIndex = pinnedAppList.indexOf(dragPlaceholder);
+
+        if (placeholderIndex == -1) {
+            cancelLauncherDrop();
+            return;
+        }
+
+        // If dragged from drawer, check if it's already pinned (should not allow duplicates)
+        if (draggedFromDrawer) {
+            String key = draggedApp.componentName.getPackageName() + "/" + draggedApp.spaceNumber;
+            boolean alreadyPinned = false;
+            for (AppItem pi : pinnedAppList) {
+                if (!pi.isEmpty && !isPlaceholder(pi)) {
+                    String piKey = pi.componentName.getPackageName() + "/" + pi.spaceNumber;
+                    if (piKey.equals(key)) {
+                        alreadyPinned = true;
+                        break;
+                    }
+                }
+            }
+            if (alreadyPinned) {
+                Toast.makeText(ParallelHomeActivity.this, draggedApp.label + " đã được ghim từ trước!", Toast.LENGTH_SHORT).show();
+                cancelLauncherDrop();
+                clearDragState();
+                return;
+            }
+            Toast.makeText(ParallelHomeActivity.this, "Đã ghim " + draggedApp.label + " vào màn hình chính", Toast.LENGTH_SHORT).show();
+        }
+
+        pinnedAppList.set(placeholderIndex, draggedApp);
+
+        dragCommitted = true;
+        homeAdapter.notifyDataSetChanged();
+        saveLauncherOrder();
+    }
+
+    private void cancelLauncherDrop() {
+        if (dragBackupList != null) {
+            pinnedAppList.clear();
+            pinnedAppList.addAll(dragBackupList);
+            homeAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private void clearDragState() {
+        dragBackupList = null;
+        draggedApp = null;
+        dragPlaceholder = null;
+        draggedPosition = AdapterView.INVALID_POSITION;
+        placeholderPosition = AdapterView.INVALID_POSITION;
+        draggedFromDrawer = false;
+        dragCommitted = false;
+    }
+
+    private void dismissActivePopup() {
+        if (activePopup != null && activePopup.isShowing()) {
+            activePopup.dismiss();
+        }
+        activePopup = null;
     }
 }

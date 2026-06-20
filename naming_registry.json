@@ -17,5 +17,8 @@
   "secure_settings_keys": {
     "KEY_GLOBAL": "parallel_space_whitelist",
     "KEY_SPACE_PREFIX": "parallel_space_apps_user_"
+  },
+  "view_tags": {
+    "tag_position": "R.id.tag_position"
   }
 }

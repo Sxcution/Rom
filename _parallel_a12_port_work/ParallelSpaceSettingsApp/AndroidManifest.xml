@@ -52,10 +52,12 @@
         </activity>
         <activity
             android:name=".ParallelHomeActivity"
-            android:theme="@android:style/Theme.Material.NoActionBar"
-            android:launchMode="singleInstance"
+            android:theme="@android:style/Theme.DeviceDefault.Wallpaper.NoTitleBar"
+            android:exported="true"
+            android:launchMode="singleTask"
             android:stateNotNeeded="true"
-            android:exported="true">
+            android:excludeFromRecents="true"
+            android:clearTaskOnLaunch="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
